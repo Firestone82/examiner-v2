@@ -1,0 +1,420 @@
+* { box-sizing: border-box; }
+
+body {
+    background: #1a1a1a;
+    color: white;
+    min-height: 100vh;
+}
+
+/* ── Title Screen ─────────────────────────────────────────────── */
+
+#editorTitle {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    gap: 1.5rem;
+}
+
+.editor-heading {
+    margin: 0;
+}
+
+.editor-subtitle {
+    margin: 0;
+    opacity: 0.7;
+}
+
+.editor-start-options {
+    display: flex;
+    align-items: center;
+    gap: 3rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 1rem;
+}
+
+.upload-zone {
+    border: 3px dashed #555;
+    border-radius: 12px;
+    padding: 3rem 4rem;
+    text-align: center;
+    cursor: default;
+    transition: border-color 0.2s, background 0.2s;
+    min-width: 280px;
+}
+
+.upload-zone.drag-over {
+    border-color: #1e87f0;
+    background: rgba(30, 135, 240, 0.08);
+}
+
+.upload-zone-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    pointer-events: none;
+}
+
+.upload-zone .uk-button {
+    pointer-events: all;
+}
+
+.upload-icon {
+    color: #555;
+    transition: color 0.2s;
+}
+
+.upload-zone.drag-over .upload-icon {
+    color: #1e87f0;
+}
+
+.upload-hint {
+    color: #aaa;
+    font-size: 1rem;
+    margin: 0;
+}
+
+.or-divider {
+    font-size: 1.4rem;
+    color: #555;
+    font-weight: 600;
+}
+
+.back-link {
+    margin-top: 0.5rem;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+}
+
+.back-link:hover {
+    opacity: 1;
+}
+
+/* ── Toolbar ──────────────────────────────────────────────────── */
+
+.editor-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.65rem 1rem;
+    background: #111;
+    border-bottom: 2px solid #2a2a2a;
+    position: sticky;
+    top: 0;
+    z-index: 900;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+}
+
+.toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.toolbar-right {
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.toolbar-label {
+    color: #888;
+    font-size: 0.88rem;
+    white-space: nowrap;
+}
+
+.toolbar-input {
+    width: 220px;
+}
+
+.toolbar-poolsize {
+    width: 68px;
+}
+
+.toolbar-btn {
+    white-space: nowrap;
+}
+
+/* ── Questions Container ──────────────────────────────────────── */
+
+.questions-container {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 1.5rem 1rem 0.5rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 5rem 2rem;
+    color: #555;
+    font-size: 1.1rem;
+}
+
+.empty-state p {
+    color: #555;
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+.bottom-add {
+    text-align: center;
+    padding: 1.5rem 1rem 3rem;
+}
+
+/* ── Question Card ────────────────────────────────────────────── */
+
+.question-card {
+    background: #1e1e1e;
+    border: 1px solid #2e2e2e;
+    border-radius: 6px;
+    margin-bottom: 0.9rem;
+    overflow: hidden;
+    transition: border-color 0.15s;
+}
+
+.question-card:hover {
+    border-color: #3a3a3a;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.7rem 1rem;
+    background: #252525;
+    cursor: pointer;
+    user-select: none;
+    gap: 0.6rem;
+    transition: background 0.15s;
+}
+
+.card-header:hover {
+    background: #2e2e2e;
+}
+
+.question-card.expanded > .card-header {
+    border-bottom: 1px solid #2e2e2e;
+}
+
+.card-header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.card-header-actions {
+    display: flex;
+    gap: 0.3rem;
+    flex-shrink: 0;
+}
+
+.q-number {
+    color: #1e87f0;
+    font-weight: 700;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    min-width: 2rem;
+}
+
+.type-badge {
+    padding: 0.2em 0.55em;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+}
+
+.badge-multi { background: #1565c0; color: #fff; }
+.badge-self  { background: #e65100; color: #fff; }
+
+.q-preview {
+    color: #666;
+    font-size: 0.87rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    flex: 1;
+}
+
+.card-body {
+    display: none;
+    padding: 1.2rem;
+}
+
+.question-card.expanded > .card-body {
+    display: block;
+}
+
+/* ── Question Form ────────────────────────────────────────────── */
+
+.form-section {
+    margin-bottom: 1.4rem;
+    padding-bottom: 1.4rem;
+    border-bottom: 1px solid #2a2a2a;
+}
+
+.form-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.form-label {
+    color: #777;
+    font-size: 0.86rem;
+    width: 115px;
+    flex-shrink: 0;
+    padding-top: 0.45rem;
+    white-space: nowrap;
+}
+
+.form-control {
+    flex: 1;
+}
+
+/* ── Answers ──────────────────────────────────────────────────── */
+
+.answers-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.answers-title {
+    color: #666;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.no-answers {
+    color: #444;
+    text-align: center;
+    padding: 1rem;
+    font-size: 0.9rem;
+    font-style: italic;
+    border: 1px dashed #333;
+    border-radius: 4px;
+}
+
+.answers-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.answer-row {
+    background: #242424;
+    border: 1px solid #333;
+    border-radius: 4px;
+    padding: 0.65rem 0.75rem;
+}
+
+.answer-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.ans-select {
+    width: 110px !important;
+    padding: 0.3rem 0.4rem !important;
+    font-size: 0.84rem !important;
+    height: auto !important;
+}
+
+.correct-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    cursor: pointer;
+    color: #4caf50;
+    font-size: 0.86rem;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.correct-toggle input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    accent-color: #4caf50;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.answer-content .uk-input,
+.answer-content .uk-textarea {
+    width: 100%;
+}
+
+/* ── Buttons ──────────────────────────────────────────────────── */
+
+.btn-icon {
+    padding: 0 0.45rem !important;
+    min-width: 34px !important;
+    height: 34px !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    line-height: 1 !important;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.75rem !important;
+    font-size: 0.84rem !important;
+    height: auto !important;
+    line-height: 1.6 !important;
+}
+
+/* ── UIKit dark-theme overrides ───────────────────────────────── */
+
+.uk-input,
+.uk-select,
+.uk-textarea {
+    background: #2a2a2a !important;
+    color: #eee !important;
+    border-color: #444 !important;
+}
+
+.uk-input:focus,
+.uk-select:focus,
+.uk-textarea:focus {
+    background: #2a2a2a !important;
+    color: #fff !important;
+    border-color: #1e87f0 !important;
+}
+
+.uk-button-default {
+    background: #2e2e2e;
+    color: #ccc;
+    border: 1px solid #444;
+}
+
+.uk-button-default:hover,
+.uk-button-default:focus {
+    background: #3a3a3a;
+    color: #fff;
+}
+
+.uk-button-default:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html class="uk-background-secondary">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>DLC Editor - Examiner V2</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/uikit/3.5.9/css/uikit.min.css" />
+    <link rel="stylesheet" href="css/editor.css">
+</head>
+
+<body>
+    <!-- Title / Upload Screen -->
+    <div id="editorTitle">
+        <h1 class="uk-light uk-text-center uk-heading-xlarge editor-heading">DLC Editor</h1>
+        <h3 class="uk-light uk-text-center editor-subtitle">Create and manage question sets</h3>
+
+        <div class="editor-start-options">
+            <div class="upload-zone" id="upload-zone">
+                <input type="file" accept=".dlc" id="file-input" style="display:none">
+                <div class="upload-zone-content">
+                    <span class="upload-icon" uk-icon="icon: upload; ratio: 3"></span>
+                    <p class="upload-hint">Drop a DLC file here</p>
+                    <button class="uk-button uk-button-default" type="button"
+                        onclick="document.getElementById('file-input').click()">
+                        Select File
+                    </button>
+                </div>
+            </div>
+
+            <div class="or-divider">OR</div>
+
+            <div class="create-new-section">
+                <button class="uk-button uk-button-primary uk-button-large" onclick="createNewDlc()">
+                    Create New DLC
+                </button>
+            </div>
+        </div>
+
+        <div class="back-link">
+            <a href="index.html" class="uk-button uk-button-default">← Back to Examiner</a>
+        </div>
+    </div>
+
+    <!-- Editor Screen -->
+    <div id="editorScreen" hidden>
+        <!-- Toolbar -->
+        <div class="editor-toolbar">
+            <div class="toolbar-left">
+                <button class="uk-button uk-button-danger toolbar-btn" onclick="goBackToTitle()" title="Back">
+                    <span uk-icon="icon: sign-out; ratio: 1.1;"></span>
+                </button>
+                <span class="toolbar-label">Name:</span>
+                <input type="text" id="dlc-name-input" class="uk-input toolbar-input"
+                    placeholder="DLC Name" oninput="dlcData.name = this.value">
+                <span class="toolbar-label">Pool:</span>
+                <input type="number" id="dlc-poolsize-input" class="uk-input toolbar-poolsize"
+                    value="5" min="1" oninput="dlcData.poolsize = parseInt(this.value) || 5">
+            </div>
+            <div class="toolbar-right">
+                <button class="uk-button uk-button-default toolbar-btn" id="toggleAllBtn"
+                    onclick="toggleAllCards()">Expand All</button>
+                <button class="uk-button uk-button-primary toolbar-btn" onclick="addQuestion()">
+                    + Add Question
+                </button>
+                <button class="uk-button uk-button-default toolbar-btn" onclick="exportDlc()">
+                    <span uk-icon="download"></span> Export
+                </button>
+            </div>
+        </div>
+
+        <!-- Questions list -->
+        <div id="questionsList" class="questions-container"></div>
+
+        <div class="bottom-add">
+            <button class="uk-button uk-button-primary" onclick="addQuestion()">+ Add Question</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/uikit/3.5.9/js/uikit.min.js"
+        integrity="sha512-OZ9Sq7ecGckkqgxa8t/415BRNoz2GIInOsu8Qjj99r9IlBCq2XJlm9T9z//D4W1lrl+xCdXzq0EYfMo8DZJ+KA=="
+        crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/uikit/3.5.9/js/uikit-icons.min.js"
+        integrity="sha512-hcz3GoZLfjU/z1OyArGvM1dVgrzpWcU3jnYaC6klc2gdy9HxrFkmoWmcUYbraeS+V/GWSgfv6upr9ff4RVyQPw=="
+        crossorigin="anonymous"></script>
+    <script src="js/editor.js"></script>
+</body>
+
+</html>
