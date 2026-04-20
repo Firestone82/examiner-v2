@@ -36,34 +36,60 @@
             var ns = {};
             for (var i = 0; i < gp.buttons.length; i++) ns[i] = gp.buttons[i].pressed;
 
-            if (just(gp, BTN.DP_DOWN))                                               moveFocus(1);
-            if (just(gp, BTN.DP_UP))                                                  moveFocus(-1);
-            if (just(gp, BTN.A) || just(gp, BTN.START))                               pressA();
-            if (just(gp, BTN.B) || just(gp, BTN.RB) || just(gp, BTN.DP_RIGHT))       pressB();
-            if (just(gp, BTN.X))                                                       pressX();
-            if (just(gp, BTN.Y) || just(gp, BTN.LB) || just(gp, BTN.DP_LEFT))        pressY();
+            // D-pad up/down → navigate between answers
+            if (just(gp, BTN.DP_DOWN)) moveFocus(1);
+            if (just(gp, BTN.DP_UP))   moveFocus(-1);
+
+            // D-pad left/right → previous / next question
+            if (just(gp, BTN.DP_LEFT)  || just(gp, BTN.LB)) pressLeft();
+            if (just(gp, BTN.DP_RIGHT) || just(gp, BTN.RB)) pressRight();
+
+            // Y / Start → confirm (check answers / show answer / continue)
+            if (just(gp, BTN.Y) || just(gp, BTN.START)) pressY();
+
+            // A → select answer / self-assessment show or mark correct
+            if (just(gp, BTN.A)) pressA();
+
+            // X → dismiss focused answer / unmark
+            if (just(gp, BTN.X)) pressX();
+
+            // B → self-assessment mark incorrect
+            if (just(gp, BTN.B)) pressB();
 
             prev = ns;
         }
         rafId = requestAnimationFrame(tick);
     }
 
+    // Y: check/confirm/continue — always clicks checkButton
+    function pressY() {
+        clickBtn('checkButton');
+    }
+
+    // A: select focused answer (q-with-a) / show answer or mark correct (self-assessment)
     function pressA() {
         var correct = document.querySelector('.self-assessment-button-correct');
         if (correct) { correct.click(); return; }
+
+        var wrappers = document.querySelectorAll('#answersHolder .answer-wrapper');
+        if (!wrappers.length) {
+            // Self-assessment before answer is shown — A shows the answer
+            clickBtn('checkButton');
+            return;
+        }
+
         if (focusedAns >= 0 && typeof select === 'function') {
             select(focusedAns);
-        } else {
-            clickBtn('checkButton');
         }
     }
 
+    // B: self-assessment mark incorrect only
     function pressB() {
         var wrong = document.querySelector('.self-assessment-button-wrong');
-        if (wrong) { wrong.click(); return; }
-        clickBtn('skipButton');
+        if (wrong) wrong.click();
     }
 
+    // X: dismiss focused answer / unmark
     function pressX() {
         if (focusedAns >= 0 && typeof dismissAnswer === 'function') {
             dismissAnswer(focusedAns);
@@ -72,7 +98,8 @@
         }
     }
 
-    function pressY() { clickBtn('prevButton'); }
+    function pressLeft()  { clickBtn('prevButton'); }
+    function pressRight() { clickBtn('skipButton'); }
 
     function clickBtn(id) {
         var el = document.getElementById(id);
