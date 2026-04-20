@@ -122,8 +122,8 @@
         var ws = document.querySelectorAll('#answersHolder .answer-wrapper');
         if (!ws.length) return;
         var next = focusedAns + dir;
-        if (next < -1) next = ws.length - 1;
-        if (next >= ws.length) next = -1;
+        if (next < -1) next = -1;
+        if (next >= ws.length) next = ws.length - 1;
         setFocus(next);
     }
 
