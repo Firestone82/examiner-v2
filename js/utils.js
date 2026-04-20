@@ -89,6 +89,7 @@ function cleanUpHolders() {
     document.getElementById("answersHolder").innerHTML = "";
     document.getElementById("md-holder").src = "";
     document.getElementById("md-holder").hidden = true;
+    if (typeof gamepadResetFocus === 'function') gamepadResetFocus();
 }
 
 /**
@@ -651,6 +652,10 @@ function createCorrectBtn(fn) {
     correctButton.classList.add("uk-width-1-2");
     correctButton.classList.add("self-assessment-button-correct");
     correctButton.onclick = fn;
+    let hint = document.createElement("span");
+    hint.className = "gamepad-hint gp-btn-a";
+    hint.textContent = "A";
+    correctButton.appendChild(hint);
     return correctButton;
 }
 
@@ -662,5 +667,9 @@ function createIncorrectBtn(fn) {
     incorrectButton.classList.add("uk-width-1-2");
     incorrectButton.classList.add("self-assessment-button-wrong");
     incorrectButton.onclick = fn;
+    let hint = document.createElement("span");
+    hint.className = "gamepad-hint gp-btn-b";
+    hint.textContent = "B";
+    incorrectButton.appendChild(hint);
     return incorrectButton;
 }

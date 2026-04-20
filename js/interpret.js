@@ -50,6 +50,12 @@ function addAnswersToHolder(answers){
         let wrapper = document.createElement("div");
         wrapper.className = "answer-wrapper";
 
+        let gpadHint = document.createElement("span");
+        gpadHint.className = "gamepad-hint gp-dpad";
+        gpadHint.textContent = "↕";
+        gpadHint.title = "D-pad: navigate | A: select | X: dismiss";
+        wrapper.appendChild(gpadHint);
+
         switch (answers[i]["type"]) {
             case "text":
                 addTextToHolder(wrapper, answers[i]["content"], true, i);
