@@ -67,9 +67,16 @@
     }
 
     // A: select focused answer (q-with-a) / show answer or mark correct (self-assessment)
+    //    after answers are checked: move to next question
     function pressA() {
         var correct = document.querySelector('.self-assessment-button-correct');
         if (correct) { correct.click(); return; }
+
+        var skip = document.getElementById('skipButton');
+        if (skip && skip.hidden) {
+            clickBtn('checkButton');
+            return;
+        }
 
         var wrappers = document.querySelectorAll('#answersHolder .answer-wrapper');
         if (!wrappers.length) {
@@ -83,10 +90,15 @@
         }
     }
 
-    // B: self-assessment mark incorrect only
+    // B: self-assessment mark incorrect / after answers checked: move to next question
     function pressB() {
         var wrong = document.querySelector('.self-assessment-button-wrong');
-        if (wrong) wrong.click();
+        if (wrong) { wrong.click(); return; }
+
+        var skip = document.getElementById('skipButton');
+        if (skip && skip.hidden) {
+            clickBtn('checkButton');
+        }
     }
 
     // X: dismiss focused answer / unmark
