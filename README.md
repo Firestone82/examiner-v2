@@ -31,7 +31,11 @@ Just simply [open the app](https://adaxiik.github.io/examiner-v2/) and drag and 
 ```
 
 - `id` is unique question id, recommended to use 0,1...
-- `type` is a type of question, can be `self-assessment` or `question-with-answers`
+- `type` is a type of question, can be `self-assessment`, `question-with-answers`, `text` or `image`
+
+If every question in a DLC has `type` `text` or `image` and its `question` object
+has a `title` field, the DLC opens in **Questions Wheel** mode (see below)
+instead of the standard examiner.
 
 ## For type `question-with-answers`:
 
@@ -122,6 +126,39 @@ Just simply [open the app](https://adaxiik.github.io/examiner-v2/) and drag and 
     ]
 }
 ```
+
+# Questions Wheel
+
+A questions-wheel DLC turns the app into a spinnable wheel. Every section is a
+question; spinning picks one at random and shows it in a modal with the full
+text. Questions can be toggled off via the sidebar (excluded from the wheel)
+or hidden directly from the question modal.
+
+### Wheel question structure
+
+```json
+{
+    "id": 0,
+    "type": "text",
+    "question": {
+        "type": "text",
+        "content": "long question version",
+        "title": "short version shown on wheel",
+        "color": "#e53935"
+    },
+    "answers": [
+        "optional hint text shown in the modal"
+    ]
+}
+```
+
+- outer `type` — `text` or `image` (controls how `question.content` is rendered)
+- `question.title` — short label shown on the wheel section
+- `question.content` — full question text (or image URL when `question.type` is `image`)
+- `question.color` — hex color (e.g. `#e53935`) used for the wheel section
+- `answers` — array of strings used as optional hints in the modal
+
+See [example-wheel.dlc](example/example-wheel.dlc) for a complete example.
 
 # Text to DLC tool
 `txt2dlc.py` is a simple tool for converting text files to DLC files. 

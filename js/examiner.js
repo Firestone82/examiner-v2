@@ -39,6 +39,20 @@ function VerifyDlc(questions) {
     return true;
 }
 
+/**
+ * @brief Detects if the DLC is a questions-wheel DLC.
+ * Wheel DLCs have questions whose outer "type" is "text" or "image"
+ * and whose "question" object contains a "title" field.
+ */
+function isWheelDlc(dlc) {
+    if (!dlc || !dlc.data || dlc.data.length === 0) return false;
+    return dlc.data.every(q =>
+        (q.type === 'text' || q.type === 'image')
+        && q.question
+        && typeof q.question.title === 'string'
+    );
+}
+
 
 class QuestionPool {
     constructor(size) {

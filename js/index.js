@@ -1,5 +1,5 @@
 const supportedVersions =  ["1.3"];
-const supportedQuestionTypes = ["self-assessment", "question-with-answers"];
+const supportedQuestionTypes = ["self-assessment", "question-with-answers", "text", "image"];
 
 console.log("Currently supported DLC versions: " + supportedVersions);
 console.log("Currently supported question types: " + supportedQuestionTypes);
@@ -52,7 +52,7 @@ function loadQuestions(contents, fileName, skipSessionCheck) {
 
     console.log("Loaded " + questions["name"] + " dlc");
 
-    if (!skipSessionCheck) {
+    if (!skipSessionCheck && !isWheelDlc(questions)) {
         let saved = getSavedSession();
         if (saved && saved.dlcName === currentDlcName) {
             showConfirmscreen("title",
@@ -176,6 +176,11 @@ function restoreSession(savedState, allQuestions) {
 function playGame(dlc, savedState) {
     var uploadButton = document.getElementById("uploadButton");
     if (uploadButton) uploadButton.parentNode.removeChild(uploadButton);
+
+    if (isWheelDlc(dlc)) {
+        startWheel(dlc);
+        return;
+    }
 
     showExaminer(dlc.name);
 

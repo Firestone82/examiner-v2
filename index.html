@@ -152,6 +152,55 @@
         </p>
     </div>
 
+    <!-- Questions Wheel view -->
+    <div id="wheelView" hidden>
+        <div class="uk-grid-collapse" uk-grid>
+            <div class="uk-width-3-4@l uk-width-4-5@xl">
+                <div class="section-title">
+                    <button class="exit-button uk-button uk-button-danger" type="button"
+                        onclick="window.location.reload();"><a class="uk-link-reset" uk-icon="icon: sign-out; ratio: 1.1;"></a></button>
+                    <span id="wheel-dlc-name">Questions Wheel</span>
+                </div>
+                <div class="wheel-stage">
+                    <div class="wheel-container">
+                        <div class="wheel-pointer"></div>
+                        <div class="wheel-spinner" id="wheelSpinner">
+                            <svg id="wheelSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600"></svg>
+                        </div>
+                        <div class="wheel-hub" id="wheelHub">SPIN</div>
+                    </div>
+                    <button id="spinButton" class="uk-button uk-button-primary wheel-spin-btn" type="button">SPIN THE WHEEL</button>
+                </div>
+            </div>
+
+            <div class="uk-width-1-4@l uk-width-1-5@xl">
+                <div class="sidebar">
+                    <span class="section-title darker">Questions
+                        <button class="wheel-reset-btn" id="wheelResetBtn" title="Show all questions">⟳</button>
+                    </span>
+                    <div class="wheel-question-list" id="wheelQuestionList">
+                        <!-- JS: Wheel Question List -->
+                    </div>
+                    <div class="wheel-legend">
+                        Click a question to toggle it on the wheel.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Wheel question modal -->
+    <div id="wheelModal" hidden>
+        <div id="wheelModalContent">
+            <div id="wheelModalColorBar"></div>
+            <div id="wheelModalBody"></div>
+            <div id="wheelModalButtons">
+                <button id="wheelModalClose" class="uk-button uk-button-default" type="button">Close question</button>
+                <button id="wheelModalHide" class="uk-button uk-button-danger" type="button">Hide question</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Question preview modal (end screen) -->
     <div id="questionModal" hidden>
         <div id="questionModalContent">
@@ -163,6 +212,7 @@
     <script src="js/utils.js?v=6"></script>
     <script src="js/examiner.js?v=6"></script>
     <script src="js/interpret.js?v=6"></script>
+    <script src="js/wheel.js?v=1"></script>
     <script src="js/index.js?v=6"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/uikit/3.5.9/js/uikit.min.js"
