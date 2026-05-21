@@ -1619,11 +1619,6 @@ p.answer.dismissed {
 
 /* ── Wheel view: left-aligned section / config titles ─────────────────────── */
 
-#wheelView .section-title {
-    text-align: left;
-    padding-left: 1rem;
-}
-
 /* Top DLC name shares the row with the absolutely-positioned exit button. */
 #wheelView .section-title:has(.exit-button) {
     padding-left: 4.5rem;
