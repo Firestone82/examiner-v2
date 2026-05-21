@@ -868,7 +868,12 @@ class QuestionsWheel {
 
         let startTime = performance.now();
         let duration = this.prefs.spinTimeMs;
-        let lastTickSection = 0;
+        // Tick once per section when the pool is small; for larger pools,
+        // space ticks by degrees so the rate stays uniform (≈40 ticks total)
+        // regardless of how many sections we pass.
+        let MAX_TICKS = 40;
+        let tickDeg = Math.max(step, totalDelta / MAX_TICKS);
+        let lastTickStep = 0;
 
         let animate = (now) => {
             let elapsed = now - startTime;
@@ -877,9 +882,9 @@ class QuestionsWheel {
             let currentRot = startRotation + totalDelta * eased;
             spinner.style.transform = 'rotate(' + currentRot + 'deg)';
 
-            let passed = Math.floor((currentRot - startRotation) / step);
-            while (lastTickSection < passed) {
-                lastTickSection++;
+            let passed = Math.floor((currentRot - startRotation) / tickDeg);
+            if (passed > lastTickStep) {
+                lastTickStep = passed;
                 playSound('wheel-tick');
             }
 
