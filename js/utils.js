@@ -385,7 +385,7 @@ function _playTone(frequency, type, startTime, duration, gainValue, ctx) {
     osc.stop(startTime + duration);
 }
 
-function playSound(name) {
+function playSound(name, volumeMul = 1) {
     if (_soundSettings.muted) return;
     if (UI_SOUNDS.includes(name) && !_soundSettings.groups.ui) return;
     let settingsKey = name;
@@ -396,7 +396,7 @@ function playSound(name) {
     try {
         let ctx = _getAudioCtx();
         let now = ctx.currentTime;
-        let v = _soundSettings.volume;
+        let v = _soundSettings.volume * volumeMul;
         switch (name) {
             case 'select':
                 _playTone(600, 'sine', now, 0.05, 0.10 * v, ctx);
@@ -439,7 +439,8 @@ function playSound(name) {
                 _playTone(180, 'sawtooth', now + 0.1, 0.18, 0.20 * v, ctx);
                 break;
             case 'wheel-tick':
-                _playTone(1400, 'square', now, 0.025, 0.06 * v, ctx);
+                _playTone(220, 'square',   now, 0.035, 0.07 * v, ctx);
+                _playTone(110, 'triangle', now, 0.045, 0.09 * v, ctx);
                 break;
             case 'wheel-land':
                 _playTone(523.25, 'triangle', now,        0.18, 0.18 * v, ctx);

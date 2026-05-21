@@ -1615,7 +1615,8 @@ p.answer.dismissed {
     white-space: nowrap;
 }
 
-.wheel-group-toggle-btn {
+.wheel-group-toggle-btn,
+.wheel-group-collapse-btn {
     flex-shrink: 0;
     background: none;
     border: none;
@@ -1624,28 +1625,24 @@ p.answer.dismissed {
     font-size: 1rem;
     line-height: 1;
     padding: 0 0.2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     transition: color 0.12s;
-}
-
-.wheel-group-toggle-btn:hover {
-    color: white;
 }
 
 .wheel-group-collapse-btn {
-    flex-shrink: 0;
-    background: none;
-    border: none;
+    margin-right: 0.3rem;
     color: #888;
-    cursor: pointer;
-    font-size: 0.85rem;
-    line-height: 1;
-    padding: 0 0.4rem 0 0;
-    margin-left: -0.2rem;
-    transition: color 0.12s;
 }
 
+.wheel-group-toggle-btn:hover,
 .wheel-group-collapse-btn:hover {
     color: white;
+}
+
+.wheel-group-header.collapsed {
+    margin-bottom: 0.5rem;
 }
 
 /* ── Wheel view: left-aligned section / config titles ─────────────────────── */
