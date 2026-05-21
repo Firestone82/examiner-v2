@@ -1058,8 +1058,8 @@ p.answer.dismissed {
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 18%;
-    height: 18%;
+    width: var(--wheel-hub-size, 18%);
+    height: var(--wheel-hub-size, 18%);
     transform: translate(-50%, -50%);
     background: #1a1a1a;
     border: 4px solid #444;
@@ -1074,7 +1074,7 @@ p.answer.dismissed {
     cursor: pointer;
     z-index: 2;
     user-select: none;
-    transition: background 0.12s, border-color 0.12s;
+    transition: background 0.12s, border-color 0.12s, width 0.15s ease, height 0.15s ease;
 }
 
 .wheel-hub:hover {

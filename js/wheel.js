@@ -10,6 +10,7 @@ const WHEEL_DEFAULT_PREFS = {
     size: 100,
     textScale: 75,
     spinTimeMs: 4500,
+    hubSize: 18,
     showHints: true,
 };
 
@@ -23,6 +24,7 @@ function loadWheelPrefs() {
                 size:       typeof p.size === 'number' ? p.size : WHEEL_DEFAULT_PREFS.size,
                 textScale:  typeof p.textScale === 'number' ? p.textScale : WHEEL_DEFAULT_PREFS.textScale,
                 spinTimeMs: typeof p.spinTimeMs === 'number' ? p.spinTimeMs : WHEEL_DEFAULT_PREFS.spinTimeMs,
+                hubSize:    typeof p.hubSize === 'number' ? p.hubSize : WHEEL_DEFAULT_PREFS.hubSize,
                 showHints:  p.showHints !== false,
             };
         }
@@ -85,6 +87,7 @@ class QuestionsWheel {
     attach() {
         this.applySize();
         this.applyTextScale();
+        this.applyHubSize();
 
         let spinBtn = document.getElementById('spinButton');
         spinBtn.onclick = () => this.spin();
@@ -142,6 +145,19 @@ class QuestionsWheel {
             spinSlider.oninput = (e) => {
                 this.prefs.spinTimeMs = parseInt(e.target.value, 10);
                 this.updateSpinTimeLabel();
+                saveWheelPrefs(this.prefs);
+            };
+        }
+
+        let hubSlider = document.getElementById('wheelHubSizeSlider');
+        if (hubSlider) {
+            hubSlider.value = this.prefs.hubSize;
+            this.updateHubSizeLabel();
+            hubSlider.oninput = (e) => {
+                this.prefs.hubSize = parseInt(e.target.value, 10);
+                this.applyHubSize();
+                this.updateHubSizeLabel();
+                this.renderWheel();
                 saveWheelPrefs(this.prefs);
             };
         }
@@ -235,6 +251,16 @@ class QuestionsWheel {
 
     applyTextScale() {
         // text scale is read directly by renderWheel via this.prefs.textScale
+    }
+
+    applyHubSize() {
+        let view = document.getElementById('wheelView');
+        if (view) view.style.setProperty('--wheel-hub-size', this.prefs.hubSize + '%');
+    }
+
+    updateHubSizeLabel() {
+        let el = document.getElementById('wheelHubSizeValue');
+        if (el) el.textContent = this.prefs.hubSize + '%';
     }
 
     updateSizeLabel() {
@@ -347,12 +373,15 @@ class QuestionsWheel {
         let title = (q.question && q.question.title) || ('Question #' + q.id);
         let textScale = this.prefs.textScale / 100;
 
-        // Radial bounds — leave the hub clear and a small margin at the outer rim.
-        let innerR = radius * 0.18;
-        let outerR = radius * 0.96;
+        // Hub radius in svg coords. The hub div is sized as a percentage of
+        // the wheel diameter (= 2 * cx); its radius is half of that.
+        let hubRadius = (this.prefs.hubSize / 100) * cx;
+        // Real padding so labels don't kiss the hub or the rim.
+        let pad = cx * 0.05;
+        let innerR = hubRadius + pad;
+        let outerR = radius - pad;
+        if (outerR < innerR + 10) outerR = innerR + 10; // degenerate safety
         let availLen = outerR - innerR;
-        // Position text at the radial midpoint of the available band, so it can
-        // extend equally in both directions toward the rim and the hub.
         let textRadius = (innerR + outerR) / 2;
         let pos = polarToCartesian(cx, cy, textRadius, midAngle);
 
