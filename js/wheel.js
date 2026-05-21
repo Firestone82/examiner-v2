@@ -123,6 +123,18 @@ class QuestionsWheel {
             };
         }
 
+        let shuffleBtn = document.getElementById('wheelShuffleBtn');
+        if (shuffleBtn) {
+            shuffleBtn.onclick = () => this.shuffleQuestions();
+        }
+
+        this.render();
+    }
+
+    shuffleQuestions() {
+        if (this.spinning) return;
+        shuffle(this.questions);
+        this.resetSpinner();
         this.render();
     }
 
@@ -240,10 +252,10 @@ class QuestionsWheel {
 
     appendSectorText(svg, q, cx, cy, radius, midAngle, step) {
         let title = (q.question && q.question.title) || ('Question #' + q.id);
-        let maxChars = step >= 60 ? 18 : step >= 30 ? 14 : step >= 18 ? 10 : 8;
+        let maxChars = step >= 60 ? 30 : step >= 36 ? 24 : step >= 24 ? 18 : step >= 18 ? 14 : step >= 12 ? 10 : 8;
         let shown = title.length > maxChars ? title.substring(0, maxChars - 1) + '…' : title;
 
-        let textRadius = radius * 0.62;
+        let textRadius = radius * 0.66;
         let pos = polarToCartesian(cx, cy, textRadius, midAngle);
 
         let txt = document.createElementNS(WHEEL_SVG_NS, 'text');
@@ -253,7 +265,7 @@ class QuestionsWheel {
         txt.setAttribute('dominant-baseline', 'middle');
         txt.setAttribute('fill', '#ffffff');
         txt.setAttribute('font-weight', 'bold');
-        let fontSize = Math.max(11, Math.min(20, step * 0.5));
+        let fontSize = Math.max(12, Math.min(24, step * 0.55));
         txt.setAttribute('font-size', fontSize);
         txt.setAttribute('paint-order', 'stroke');
         txt.setAttribute('stroke', 'rgba(0,0,0,0.55)');
@@ -427,7 +439,14 @@ class QuestionsWheel {
             question.answers.forEach(a => {
                 let row = document.createElement('div');
                 row.className = 'wheel-modal-answer';
-                row.textContent = typeof a === 'string' ? a : (a && a.content) || '';
+                let content = typeof a === 'string' ? a : (a && a.content) || '';
+                let mdEl = document.createElement('zero-md');
+                mdEl.setAttribute('src', 'data:text/plain;charset=utf-8,' + encodeURIComponent(content));
+                let tpl = document.createElement('template');
+                tpl.innerHTML = '<link rel="stylesheet" href="css/md.css?v=6">'
+                    + '<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/PrismJS/prism@1/themes/prism.min.css"/>';
+                mdEl.appendChild(tpl);
+                row.appendChild(mdEl);
                 list.appendChild(row);
             });
             body.appendChild(list);

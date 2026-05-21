@@ -10,11 +10,17 @@ Just simply [open the app](https://adaxiik.github.io/examiner-v2/) and drag and 
 {
     "filetype": "examiner-dlc",
     "version": "1.3",
+    "type": "prompter" | "wheeler", // optional, default detected from data
     "name": ... ,
     "poolsize" : ... , // optional (default: 5)
     "data": []
 }
 ```
+
+The optional top-level `type` field selects the app's mode:
+
+- `prompter` (default) — the standard examiner with a question pool.
+- `wheeler` — the spinnable Questions Wheel.
 ### The `data` field is an array of questions. Each question is an object with the following structure:
 
 ```json

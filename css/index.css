@@ -1016,8 +1016,8 @@ p.answer.dismissed {
 
 .wheel-container {
     position: relative;
-    width: calc(min(80vh, 92vw, 900px) * var(--wheel-scale));
-    max-width: 92vw;
+    width: calc(min(86vh, 94vw, 1200px) * var(--wheel-scale));
+    max-width: 94vw;
     aspect-ratio: 1 / 1;
     transition: width 0.15s ease;
 }
@@ -1224,12 +1224,99 @@ p.answer.dismissed {
     display: flex;
     align-items: center;
     gap: 0.6rem;
-    width: min(80vh, 92vw, 900px);
-    max-width: 92vw;
+    width: min(86vh, 94vw, 1200px);
+    max-width: 94vw;
     padding: 0.4rem 0.8rem;
     background: #1a1a1a;
     border: 1px solid #2a2a2a;
     border-radius: 4px;
+}
+
+.wheel-action-row {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+}
+
+.wheel-shuffle-btn {
+    color: white !important;
+    background: #363636;
+    font-size: 0.85rem;
+    padding: 0 1rem;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+.wheel-shuffle-btn:hover {
+    background: #444;
+}
+
+.wheel-shuffle-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.wheel-sound-btn {
+    position: absolute;
+    right: 0.6rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #959595;
+    padding: 0.1rem 0.3rem;
+    line-height: 0;
+    display: flex;
+    align-items: center;
+}
+
+.wheel-sound-btn:hover,
+.wheel-sound-btn.muted {
+    color: white;
+}
+
+#wheelSoundPanel {
+    top: 100%;
+    right: 0;
+}
+
+/* Markdown hint rendering – tame the default md.css sizing for compact display */
+.wheel-modal-answer zero-md {
+    display: block;
+    text-align: left;
+}
+
+.wheel-modal-answer .markdown-body {
+    font-size: 0.95rem !important;
+    margin-left: 0 !important;
+}
+
+.wheel-modal-answer .markdown-body ul,
+.wheel-modal-answer .markdown-body ol {
+    font-size: 0.95rem !important;
+    margin-left: 1.2rem;
+}
+
+.wheel-modal-answer .markdown-body p {
+    color: #ddd !important;
+    font-size: 0.95rem !important;
+    text-align: left;
+    margin: 0.2rem 0;
+}
+
+.wheel-modal-answer .markdown-body h1,
+.wheel-modal-answer .markdown-body h2,
+.wheel-modal-answer .markdown-body h3 {
+    font-size: 1.05rem;
+    margin: 0.3rem 0 0.2rem;
+}
+
+.wheel-modal-answer .markdown-body code {
+    background: #111;
+    padding: 0.1em 0.3em;
+    border-radius: 3px;
+    font-size: 0.85rem;
 }
 
 .wheel-size-label {

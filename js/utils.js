@@ -490,23 +490,23 @@ const _SVG_SOUND_ON  = `<svg xmlns="http://www.w3.org/2000/svg" width="16" heigh
 const _SVG_SOUND_OFF = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`;
 
 function _updateSoundBtn() {
-    let btn = document.getElementById('soundButton');
-    if (!btn) return;
     let allOff = _soundSettings.muted || SOUND_NAMES.every(n => !_soundSettings.sounds[n]);
-    btn.innerHTML = allOff ? _SVG_SOUND_OFF : _SVG_SOUND_ON;
-    btn.classList.toggle('muted', allOff);
+    document.querySelectorAll('.sound-toggle-btn').forEach(btn => {
+        btn.innerHTML = allOff ? _SVG_SOUND_OFF : _SVG_SOUND_ON;
+        btn.classList.toggle('muted', allOff);
+    });
 }
-
-let _soundPanelOpen = false;
 
 function toggleSound(event) {
     if (event) event.stopPropagation();
-    _soundPanelOpen = !_soundPanelOpen;
-    let panel = document.getElementById('soundPanel');
-    if (panel) {
-        panel.hidden = !_soundPanelOpen;
-        if (_soundPanelOpen) _buildSoundPanel();
-    }
+    let btn = event && event.currentTarget;
+    let panelId = (btn && btn.dataset && btn.dataset.panel) || 'soundPanel';
+    let panel = document.getElementById(panelId);
+    if (!panel) return;
+    let willOpen = panel.hidden;
+    document.querySelectorAll('.sound-panel').forEach(p => { if (p !== panel) p.hidden = true; });
+    panel.hidden = !willOpen;
+    if (willOpen) _buildSoundPanels();
 }
 
 function _makeDivider() {
@@ -547,8 +547,11 @@ function _makeVolumeRow(disabled) {
     return row;
 }
 
-function _buildSoundPanel() {
-    let panel = document.getElementById('soundPanel');
+function _buildSoundPanels() {
+    document.querySelectorAll('.sound-panel').forEach(p => _buildSoundPanel(p));
+}
+
+function _buildSoundPanel(panel) {
     if (!panel) return;
     panel.innerHTML = '';
     let masterOff = _soundSettings.muted;
@@ -558,7 +561,7 @@ function _buildSoundPanel() {
         _soundSettings.muted = !checked;
         _saveSoundSettings();
         _updateSoundBtn();
-        _buildSoundPanel();
+        _buildSoundPanels();
     });
     allRow.classList.add('sound-panel-all');
     panel.appendChild(allRow);
@@ -574,7 +577,7 @@ function _buildSoundPanel() {
     let uiGroupRow = _makeSoundRow('UI / Click sounds', uiOn, uiEnabled, function(checked) {
         _soundSettings.groups.ui = checked;
         _saveSoundSettings();
-        _buildSoundPanel();
+        _buildSoundPanels();
     });
     uiGroupRow.classList.add('sound-panel-group');
     panel.appendChild(uiGroupRow);
@@ -637,16 +640,14 @@ function _makeSoundRow(label, checked, enabled, onChange) {
 
 (function() {
     _updateSoundBtn();
-    let panel = document.getElementById('soundPanel');
-    if (panel) panel.addEventListener('click', e => e.stopPropagation());
+    document.querySelectorAll('.sound-panel').forEach(p => p.addEventListener('click', e => e.stopPropagation()));
     document.addEventListener('click', function(e) {
-        if (!_soundPanelOpen) return;
-        let btn = document.getElementById('soundButton');
-        let panel = document.getElementById('soundPanel');
-        if (!btn || !panel) return;
-        if (!btn.contains(e.target) && !panel.contains(e.target)) {
-            _soundPanelOpen = false;
-            panel.hidden = true;
+        let openPanels = Array.from(document.querySelectorAll('.sound-panel')).filter(p => !p.hidden);
+        if (openPanels.length === 0) return;
+        let btnHit = Array.from(document.querySelectorAll('.sound-toggle-btn')).some(b => b.contains(e.target));
+        let panelHit = openPanels.some(p => p.contains(e.target));
+        if (!btnHit && !panelHit) {
+            openPanels.forEach(p => p.hidden = true);
         }
     });
 })();

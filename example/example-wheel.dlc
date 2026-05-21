@@ -1,6 +1,7 @@
 {
     "filetype": "examiner-dlc",
     "version": "1.3",
+    "type": "wheeler",
     "name": "Wheel Example",
     "data": [
         {
@@ -13,7 +14,7 @@
                 "color": "#e53935"
             },
             "answers": [
-                "fork/exec, ready -> running -> waiting -> terminated"
+                "**Stages:**\n\n- `fork` / `exec` — creation\n- *ready* → *running* → *waiting* → *terminated*\n\nScheduler moves processes between states."
             ]
         },
         {
