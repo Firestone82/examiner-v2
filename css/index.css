@@ -1009,6 +1009,12 @@ p.answer.dismissed {
     padding: 1.5rem 1rem 2rem;
 }
 
+#wheelView.wheel-centered .wheel-stage {
+    min-height: calc(100vh - 2.6rem);
+    justify-content: center;
+    padding: 0 1rem;
+}
+
 #wheelView {
     --wheel-scale: 1;
 }
@@ -1356,35 +1362,36 @@ p.answer.dismissed {
 }
 
 .wheel-modal-answer .markdown-body {
-    font-size: 0.95rem !important;
+    font-size: 0.78rem !important;
     margin-left: 0 !important;
 }
 
 .wheel-modal-answer .markdown-body ul,
 .wheel-modal-answer .markdown-body ol {
-    font-size: 0.95rem !important;
-    margin-left: 1.2rem;
+    font-size: 0.78rem !important;
+    margin-left: 1.1rem;
 }
 
 .wheel-modal-answer .markdown-body p {
-    color: #ddd !important;
-    font-size: 0.95rem !important;
+    color: #bbb !important;
+    font-size: 0.78rem !important;
+    font-weight: normal !important;
     text-align: left;
-    margin: 0.2rem 0;
+    margin: 0.15rem 0;
 }
 
 .wheel-modal-answer .markdown-body h1,
 .wheel-modal-answer .markdown-body h2,
 .wheel-modal-answer .markdown-body h3 {
-    font-size: 1.05rem;
-    margin: 0.3rem 0 0.2rem;
+    font-size: 0.9rem;
+    margin: 0.25rem 0 0.15rem;
 }
 
 .wheel-modal-answer .markdown-body code {
     background: #111;
     padding: 0.1em 0.3em;
     border-radius: 3px;
-    font-size: 0.85rem;
+    font-size: 0.72rem;
 }
 
 .wheel-size-label {
@@ -1478,20 +1485,22 @@ p.answer.dismissed {
 }
 
 .wheel-modal-title {
-    color: white;
-    font-size: 1.3rem;
-    font-weight: bold;
-    text-align: center;
-    margin-bottom: 1rem;
-    letter-spacing: 0.02em;
+    color: #8d8d8d;
+    font-size: 0.78rem;
+    font-weight: normal;
+    text-align: left;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
 }
 
 .wheel-modal-content {
-    color: #ddd;
-    font-size: 1.05rem;
-    line-height: 1.55;
+    color: #f1f1f1;
+    font-size: 1.35rem;
+    font-weight: bold;
+    line-height: 1.5;
     text-align: center;
-    margin-bottom: 1.2rem;
+    margin-bottom: 1.4rem;
     word-wrap: break-word;
 }
 
@@ -1502,26 +1511,26 @@ p.answer.dismissed {
 }
 
 .wheel-modal-answers-header {
-    color: #959595;
+    color: #707070;
     text-align: center;
-    font-size: 0.75rem;
+    font-size: 0.65rem;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    margin: 1rem 0 0.5rem;
+    margin: 0.8rem 0 0.35rem;
 }
 
 .wheel-modal-answers {
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
+    gap: 0.3rem;
 }
 
 .wheel-modal-answer {
     background: #242424;
-    color: #bbb;
-    padding: 0.5rem 1rem;
+    color: #aaa;
+    padding: 0.35rem 0.8rem;
     border-radius: 4px;
-    font-size: 0.95rem;
+    font-size: 0.78rem;
     text-align: left;
 }
 
@@ -1549,6 +1558,20 @@ p.answer.dismissed {
     background: #444;
 }
 
+@media (max-width: 600px) {
+    #wheelModal {
+        padding: 0.4rem;
+    }
+    #wheelModalBody {
+        padding: 1rem 1.2rem;
+        overflow-x: hidden;
+    }
+    #wheelModalButtons {
+        flex-direction: column;
+        padding: 0.7rem 1rem 1rem;
+    }
+}
+
 @media (max-width: 960px) {
     .wheel-container {
         width: min(80vw, 480px);
@@ -1556,5 +1579,71 @@ p.answer.dismissed {
     .wheel-question-list {
         max-height: 26rem;
     }
+}
+
+/* ── Wheel timer / sidebar groups ─────────────────────────────────────────── */
+
+.wheel-timer {
+    font-size: 2.4rem;
+    padding: 0.3rem 0;
+}
+
+/* Sidebar group header */
+.wheel-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 0.4rem 0.4rem 0.6rem;
+    margin: 0.5rem 0 0.3rem;
+    color: #ccc;
+    font-size: 0.78rem;
+    font-weight: bold;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border-left: 3px solid #555;
+    background: #161616;
+}
+
+.wheel-group-header:first-child {
+    margin-top: 0;
+}
+
+.wheel-group-header-label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wheel-group-toggle-btn {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0 0.2rem;
+    transition: color 0.12s;
+}
+
+.wheel-group-toggle-btn:hover {
+    color: white;
+}
+
+/* ── Wheel view: left-aligned section / config titles ─────────────────────── */
+
+/* Top DLC name shares the row with the absolutely-positioned exit button. */
+#wheelView .section-title:has(.exit-button) {
+    padding-left: 4.5rem;
+}
+
+/* Questions header shares the row with the "show all" toggle. */
+#wheelView .section-title:has(.wheel-showall-btn) {
+    padding-left: 2.4rem;
+}
+
+.wheel-config-label {
+    text-align: left;
 }
 

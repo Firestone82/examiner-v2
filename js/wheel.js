@@ -14,6 +14,8 @@ const WHEEL_DEFAULT_PREFS = {
     showHints: true,
     textOuter: false,
     dynamicRotation: false,
+    centered: true,
+    timerEnabled: false,
 };
 
 let wheelInstance = null;
@@ -30,6 +32,8 @@ function loadWheelPrefs() {
                 showHints:       p.showHints !== false,
                 textOuter:       p.textOuter === true,
                 dynamicRotation: p.dynamicRotation === true,
+                centered:        p.centered !== false,
+                timerEnabled:    p.timerEnabled === true,
             };
         }
     } catch {}
@@ -50,7 +54,7 @@ function startWheel(dlc) {
     if (nameEl) nameEl.innerText = dlc.name || 'Questions Wheel';
     document.title = (dlc.name || 'Questions Wheel') + ' - Examiner v2';
 
-    wheelInstance = new QuestionsWheel(dlc.data);
+    wheelInstance = new QuestionsWheel(dlc.data, dlc.groups);
     wheelInstance.attach();
 }
 
@@ -69,7 +73,7 @@ function easeOutQuint(t) {
 }
 
 class QuestionsWheel {
-    constructor(questions) {
+    constructor(questions, groups) {
         // Master list (input order). The sidebar always renders this set,
         // sorted by color, so it stays easy to find a question.
         this.questions = questions.slice();
@@ -83,6 +87,20 @@ class QuestionsWheel {
         this.searchQuery = '';
         this.prefs = loadWheelPrefs();
         this.hintRevealed = false;
+        // Groups come from the DLC itself, not from user settings. A
+        // question may reference a group by its id (short) or its name.
+        this.groups = Array.isArray(groups)
+            ? groups.filter(g => g && typeof g.name === 'string')
+            : [];
+        this.questionGroups = {};
+        this.questions.forEach(q => {
+            let g = q && q.question && q.question.group;
+            if ((typeof g === 'string' && g) || typeof g === 'number') {
+                this.questionGroups[q.id] = g;
+            }
+        });
+        this.timerInterval = null;
+        this.timerStart = 0;
     }
 
     get active() {
@@ -93,6 +111,8 @@ class QuestionsWheel {
         this.applySize();
         this.applyTextScale();
         this.applyHubSize();
+        this.applyCentered();
+        this.applyTimerVisibility();
 
         let hub = document.getElementById('wheelHub');
         if (hub) hub.onclick = () => this.spin();
@@ -258,6 +278,50 @@ class QuestionsWheel {
             };
         }
 
+        let centeredSwitch = document.getElementById('wheelCenteredSwitch');
+        let centeredRow = document.getElementById('wheelCenteredRow');
+        let updateCenteredSwitch = () => centeredSwitch && centeredSwitch.classList.toggle('on', this.prefs.centered);
+        updateCenteredSwitch();
+        if (centeredRow) {
+            centeredRow.onclick = (e) => {
+                e.preventDefault();
+                if (this.isMobile()) return;
+                this.prefs.centered = !this.prefs.centered;
+                updateCenteredSwitch();
+                saveWheelPrefs(this.prefs);
+                this.applyCentered();
+            };
+        }
+        let applyCenteredAvailability = () => {
+            let mobile = this.isMobile();
+            if (centeredRow) {
+                centeredRow.style.opacity = mobile ? '0.38' : '';
+                centeredRow.style.pointerEvents = mobile ? 'none' : '';
+                centeredRow.title = mobile ? 'Not available on small screens' : '';
+            }
+            this.applyCentered();
+        };
+        applyCenteredAvailability();
+        window.addEventListener('resize', applyCenteredAvailability);
+
+        let timerSwitch = document.getElementById('wheelTimerSwitch');
+        let timerRow = document.getElementById('wheelTimerRow');
+        let updateTimerSwitch = () => timerSwitch && timerSwitch.classList.toggle('on', this.prefs.timerEnabled);
+        updateTimerSwitch();
+        if (timerRow) {
+            timerRow.onclick = (e) => {
+                e.preventDefault();
+                this.prefs.timerEnabled = !this.prefs.timerEnabled;
+                updateTimerSwitch();
+                saveWheelPrefs(this.prefs);
+                this.applyTimerVisibility();
+                // If a question is open, the timer should start counting
+                // right away when newly enabled, and stop when disabled.
+                if (!this.prefs.timerEnabled) this.stopTimer();
+                else if (this.selected) this.startTimer();
+            };
+        }
+
         // Close config panel on outside click
         let configPanel = document.getElementById('wheelConfigPanel');
         let configBtn = document.getElementById('wheelConfigButton');
@@ -335,6 +399,49 @@ class QuestionsWheel {
     applyHubSize() {
         let view = document.getElementById('wheelView');
         if (view) view.style.setProperty('--wheel-hub-size', this.prefs.hubSize + '%');
+    }
+
+    isMobile() {
+        return window.innerWidth <= 600;
+    }
+
+    applyCentered() {
+        let view = document.getElementById('wheelView');
+        if (view) view.classList.toggle('wheel-centered', !this.isMobile() && this.prefs.centered);
+    }
+
+    applyTimerVisibility() {
+        let sec = document.getElementById('wheelTimeSection');
+        let timer = document.getElementById('wheelTimer');
+        let on = this.prefs.timerEnabled;
+        if (sec) sec.hidden = !on;
+        if (timer) timer.hidden = !on;
+    }
+
+    startTimer() {
+        if (!this.prefs.timerEnabled) return;
+        if (this.timerInterval) return;
+        this.timerStart = Date.now();
+        let render = () => {
+            let el = document.getElementById('wheelTimer');
+            if (!el) return;
+            let ms = Date.now() - this.timerStart;
+            let s = Math.floor(ms / 1000);
+            let m = Math.floor(s / 60);
+            let h = Math.floor(m / 60);
+            el.innerText = (h > 0 ? String(h).padStart(2, '0') + ' : ' : '')
+                + String(m % 60).padStart(2, '0') + ' : '
+                + String(s % 60).padStart(2, '0');
+        };
+        render();
+        this.timerInterval = setInterval(render, 500);
+    }
+
+    stopTimer() {
+        if (this.timerInterval) clearInterval(this.timerInterval);
+        this.timerInterval = null;
+        let el = document.getElementById('wheelTimer');
+        if (el) el.innerText = '00 : 00';
     }
 
     updateHubSizeLabel() {
@@ -427,7 +534,20 @@ class QuestionsWheel {
         }
     }
 
+    findGroup(ref) {
+        if (ref === undefined || ref === null || ref === '') return null;
+        return this.groups.find(g => g.id === ref || g.name === ref) || null;
+    }
+
     colorFor(q) {
+        if (q && this.questionGroups) {
+            let ref = this.questionGroups[q.id];
+            let grp = this.findGroup(ref);
+            if (grp && typeof grp.color === 'string') return grp.color;
+            // A raw hex color in the "group" field means "no group, just
+            // this color" — the sidebar will bucket it as ungrouped.
+            if (typeof ref === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(ref)) return ref;
+        }
         let c = q && q.question && q.question.color;
         if (typeof c === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(c)) return c;
         return WHEEL_DEFAULT_COLOR;
@@ -542,8 +662,95 @@ class QuestionsWheel {
         list.innerHTML = '';
         let q = this.searchQuery;
 
-        // Sort by hue so same-color questions are grouped together,
-        // then by id for stability inside a color group.
+        let matchesQuery = (question) => {
+            if (!q) return true;
+            let title = (question.question && question.question.title) || ('Question #' + question.id);
+            return title.toLowerCase().includes(q);
+        };
+
+        let useGroups = this.groups.length > 0
+            && this.questions.some(qq => this.findGroup(this.questionGroups[qq.id]));
+
+        if (useGroups) {
+            // Buckets are keyed by group name (guaranteed unique-ish) so we
+            // can iterate this.groups in declared order while still matching
+            // questions that referenced their group by id.
+            let buckets = {};
+            this.groups.forEach(g => { buckets[g.name] = []; });
+            let ungrouped = [];
+
+            this.questions.forEach(question => {
+                if (!matchesQuery(question)) return;
+                let group = this.findGroup(this.questionGroups[question.id]);
+                if (group) buckets[group.name].push(question);
+                else ungrouped.push(question);
+            });
+
+            this.groups.forEach(g => {
+                let items = buckets[g.name];
+                if (!items || items.length === 0) return;
+                let allHidden = items.every(q => this.hidden.has(q.id));
+                let header = document.createElement('div');
+                header.className = 'wheel-group-header';
+                header.style.borderLeftColor = g.color;
+                let label = document.createElement('span');
+                label.className = 'wheel-group-header-label';
+                label.textContent = g.name;
+                header.appendChild(label);
+                let toggleBtn = document.createElement('button');
+                toggleBtn.className = 'wheel-group-toggle-btn';
+                toggleBtn.textContent = allHidden ? '⊕' : '⊖';
+                toggleBtn.title = allHidden ? 'Show group' : 'Hide group';
+                toggleBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    if (allHidden) items.forEach(q => this.hidden.delete(q.id));
+                    else items.forEach(q => this.hidden.add(q.id));
+                    this.resetSpinner();
+                    this.render();
+                    playSound(allHidden ? 'select' : 'deselect');
+                };
+                header.appendChild(toggleBtn);
+                list.appendChild(header);
+                items.sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
+                items.forEach(question => list.appendChild(this.makeSidebarItem(question)));
+            });
+
+            if (ungrouped.length > 0) {
+                let ungroupedAllHidden = ungrouped.every(q => this.hidden.has(q.id));
+                let header = document.createElement('div');
+                header.className = 'wheel-group-header';
+                header.style.borderLeftColor = '#555';
+                let label = document.createElement('span');
+                label.className = 'wheel-group-header-label';
+                label.textContent = 'Ungrouped';
+                header.appendChild(label);
+                let toggleBtn = document.createElement('button');
+                toggleBtn.className = 'wheel-group-toggle-btn';
+                toggleBtn.textContent = ungroupedAllHidden ? '⊕' : '⊖';
+                toggleBtn.title = ungroupedAllHidden ? 'Show group' : 'Hide group';
+                toggleBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    if (ungroupedAllHidden) ungrouped.forEach(q => this.hidden.delete(q.id));
+                    else ungrouped.forEach(q => this.hidden.add(q.id));
+                    this.resetSpinner();
+                    this.render();
+                    playSound(ungroupedAllHidden ? 'select' : 'deselect');
+                };
+                header.appendChild(toggleBtn);
+                list.appendChild(header);
+                ungrouped.sort((a, b) => {
+                    let ha = hexToHue(this.colorFor(a));
+                    let hb = hexToHue(this.colorFor(b));
+                    if (ha !== hb) return ha - hb;
+                    return (a.id ?? 0) - (b.id ?? 0);
+                });
+                ungrouped.forEach(question => list.appendChild(this.makeSidebarItem(question)));
+            }
+            return;
+        }
+
+        // Default: sort by hue so same-color questions are next to each
+        // other, then by id for stability within a color group.
         let sorted = this.questions.slice().sort((a, b) => {
             let ha = hexToHue(this.colorFor(a));
             let hb = hexToHue(this.colorFor(b));
@@ -552,31 +759,43 @@ class QuestionsWheel {
         });
 
         sorted.forEach(question => {
-            let title = (question.question && question.question.title) || ('Question #' + question.id);
-            if (q && !title.toLowerCase().includes(q)) return;
-
-            let isHidden = this.hidden.has(question.id);
-            let item = document.createElement('div');
-            item.className = 'wheel-question-item' + (isHidden ? ' off' : '');
-            item.onclick = () => this.toggleQuestion(question.id);
-
-            let dot = document.createElement('span');
-            dot.className = 'wheel-question-color';
-            dot.style.background = this.colorFor(question);
-
-            let titleEl = document.createElement('span');
-            titleEl.className = 'wheel-question-title';
-            titleEl.textContent = title;
-
-            let toggle = document.createElement('span');
-            toggle.className = 'wheel-question-toggle';
-            toggle.textContent = isHidden ? '✕' : '✓';
-
-            item.appendChild(dot);
-            item.appendChild(titleEl);
-            item.appendChild(toggle);
-            list.appendChild(item);
+            if (!matchesQuery(question)) return;
+            list.appendChild(this.makeSidebarItem(question));
         });
+    }
+
+    makeSidebarItem(question) {
+        let title = (question.question && question.question.title) || ('Question #' + question.id);
+        let isHidden = this.hidden.has(question.id);
+        let item = document.createElement('div');
+        item.className = 'wheel-question-item' + (isHidden ? ' off' : '');
+        item.onclick = () => this.toggleQuestion(question.id);
+
+        let dot = document.createElement('span');
+        dot.className = 'wheel-question-color';
+        dot.style.background = this.colorFor(question);
+
+        let titleEl = document.createElement('span');
+        titleEl.className = 'wheel-question-title';
+        titleEl.textContent = title;
+
+        let toggle = document.createElement('span');
+        toggle.className = 'wheel-question-toggle';
+        toggle.textContent = isHidden ? '✕' : '✓';
+
+        item.appendChild(dot);
+        item.appendChild(titleEl);
+        item.appendChild(toggle);
+
+        // Hover tooltip shows the long question text (the title in the row
+        // is already the short label). Image-only questions get no tooltip
+        // since there's no text to render.
+        let qData = question.question;
+        if (qData && qData.type === 'text' && typeof qData.content === 'string' && qData.content.trim()) {
+            setupTooltip(item, qData.content);
+        }
+
+        return item;
     }
 
     toggleQuestion(id) {
@@ -706,7 +925,15 @@ class QuestionsWheel {
                 mdEl.setAttribute('src', 'data:text/plain;charset=utf-8,' + encodeURIComponent(content));
                 let tpl = document.createElement('template');
                 tpl.innerHTML = '<link rel="stylesheet" href="css/md.css?v=6">'
-                    + '<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/PrismJS/prism@1/themes/prism.min.css"/>';
+                    + '<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/PrismJS/prism@1/themes/prism.min.css"/>'
+                    + '<style>'
+                    + '.markdown-body{font-size:0.78rem!important}'
+                    + '.markdown-body p{font-size:0.78rem!important;font-weight:normal!important;margin:0.15rem 0}'
+                    + '.markdown-body ul,.markdown-body ol,.markdown-body li{font-size:0.78rem!important}'
+                    + '.markdown-body h1,.markdown-body h2,.markdown-body h3{font-size:0.9rem!important}'
+                    + '.markdown-body code{font-size:0.72rem!important}'
+                    + 'p{font-size:0.78rem!important;font-weight:normal!important}'
+                    + '</style>';
                 mdEl.appendChild(tpl);
                 row.appendChild(mdEl);
                 list.appendChild(row);
@@ -716,6 +943,7 @@ class QuestionsWheel {
 
         this.applyHintsButton();
         modal.hidden = false;
+        this.startTimer();
     }
 
     applyHintsButton() {
@@ -761,6 +989,7 @@ class QuestionsWheel {
         document.getElementById('wheelModal').hidden = true;
         this.selected = null;
         this.hintRevealed = false;
+        this.stopTimer();
     }
 
     hideSelected() {
@@ -769,8 +998,29 @@ class QuestionsWheel {
             return;
         }
         this.hidden.add(this.selected.id);
+        let isLast = this.active.length === 0;
         this.closeModal();
         this.resetSpinner();
+        if (isLast) {
+            playSound('finish');
+            document.getElementById('wheelView').hidden = true;
+            document.body.style.overflow = '';
+            showEndscreen('Congratulations!', 'You have answered all questions!');
+            // Restart in wheel mode means "go back to the wheel with every
+            // question visible again" — no full reload.
+            let restartBtn = document.getElementById('restartButton');
+            if (restartBtn) {
+                restartBtn.onclick = () => {
+                    document.getElementById('endScreen').hidden = true;
+                    this.hidden.clear();
+                    document.getElementById('wheelView').hidden = false;
+                    document.body.style.overflow = 'hidden';
+                    this.resetSpinner();
+                    this.render();
+                };
+            }
+            return;
+        }
         this.render();
     }
 }

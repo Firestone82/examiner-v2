@@ -14,7 +14,7 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/uikit/3.5.9/css/uikit.min.css" />
-    <link rel="stylesheet" href="css/index.css?v=6">
+    <link rel="stylesheet" href="css/index.css?v=8">
     <script type="module" src="https://cdn.jsdelivr.net/gh/zerodevx/zero-md@2/dist/zero-md.min.js"></script>
 </head>
 
@@ -197,6 +197,14 @@
                             <span class="wheel-config-label">Auto rotate</span>
                             <span class="sound-switch" id="wheelDynamicRotationSwitch"></span>
                         </label>
+                        <label class="wheel-config-row wheel-config-toggle-row" id="wheelCenteredRow" data-tooltip="Vertically center the wheel in the available viewport">
+                            <span class="wheel-config-label">Center on screen</span>
+                            <span class="sound-switch" id="wheelCenteredSwitch"></span>
+                        </label>
+                        <label class="wheel-config-row wheel-config-toggle-row" id="wheelTimerRow" data-tooltip="Run a timer while a question is open">
+                            <span class="wheel-config-label">Timer</span>
+                            <span class="sound-switch" id="wheelTimerSwitch"></span>
+                        </label>
                     </div>
                     <button class="sound-toggle-btn wheel-sound-btn" id="wheelSoundButton" data-panel="wheelSoundPanel" onclick="toggleSound(event)" title="Sounds"></button>
                     <div id="wheelSoundPanel" class="sound-panel" hidden></div>
@@ -214,6 +222,9 @@
 
             <div class="uk-width-1-4@l uk-width-1-5@xl">
                 <div class="sidebar">
+                    <span class="section-title darker wheel-time-section" id="wheelTimeSection" hidden>Time</span>
+                    <span class="timer wheel-timer" id="wheelTimer" hidden>00 : 00</span>
+
                     <span class="section-title darker">Questions
                         <button class="wheel-showall-btn" id="wheelShowAllBtn" title="Show all hidden questions">⟳</button>
                         <button class="wheel-search-btn" id="wheelSearchBtn" title="Search questions"><span uk-icon="search"></span></button>
@@ -257,7 +268,7 @@
     <script src="js/utils.js?v=6"></script>
     <script src="js/examiner.js?v=6"></script>
     <script src="js/interpret.js?v=6"></script>
-    <script src="js/wheel.js?v=9"></script>
+    <script src="js/wheel.js?v=15"></script>
     <script src="js/index.js?v=6"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/uikit/3.5.9/js/uikit.min.js"
