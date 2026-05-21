@@ -1631,6 +1631,23 @@ p.answer.dismissed {
     color: white;
 }
 
+.wheel-group-collapse-btn {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: #888;
+    cursor: pointer;
+    font-size: 0.85rem;
+    line-height: 1;
+    padding: 0 0.4rem 0 0;
+    margin-left: -0.2rem;
+    transition: color 0.12s;
+}
+
+.wheel-group-collapse-btn:hover {
+    color: white;
+}
+
 /* ── Wheel view: left-aligned section / config titles ─────────────────────── */
 
 /* Top DLC name shares the row with the absolutely-positioned exit button. */
