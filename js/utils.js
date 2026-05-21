@@ -439,7 +439,8 @@ function playSound(name) {
                 _playTone(180, 'sawtooth', now + 0.1, 0.18, 0.20 * v, ctx);
                 break;
             case 'wheel-tick':
-                _playTone(1400, 'square', now, 0.025, 0.06 * v, ctx);
+                _playTone(220, 'square',   now, 0.035, 0.07 * v, ctx);
+                _playTone(110, 'triangle', now, 0.045, 0.09 * v, ctx);
                 break;
             case 'wheel-land':
                 _playTone(523.25, 'triangle', now,        0.18, 0.18 * v, ctx);
