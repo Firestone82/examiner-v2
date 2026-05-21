@@ -12,6 +12,8 @@ const WHEEL_DEFAULT_PREFS = {
     spinTimeMs: 4500,
     hubSize: 18,
     showHints: true,
+    textOuter: false,
+    dynamicRotation: false,
 };
 
 let wheelInstance = null;
@@ -21,11 +23,13 @@ function loadWheelPrefs() {
         let p = JSON.parse(localStorage.getItem(WHEEL_PREFS_KEY));
         if (p && typeof p === 'object') {
             return {
-                size:       typeof p.size === 'number' ? p.size : WHEEL_DEFAULT_PREFS.size,
-                textScale:  typeof p.textScale === 'number' ? p.textScale : WHEEL_DEFAULT_PREFS.textScale,
-                spinTimeMs: typeof p.spinTimeMs === 'number' ? p.spinTimeMs : WHEEL_DEFAULT_PREFS.spinTimeMs,
-                hubSize:    typeof p.hubSize === 'number' ? p.hubSize : WHEEL_DEFAULT_PREFS.hubSize,
-                showHints:  p.showHints !== false,
+                size:            typeof p.size === 'number' ? p.size : WHEEL_DEFAULT_PREFS.size,
+                textScale:       typeof p.textScale === 'number' ? p.textScale : WHEEL_DEFAULT_PREFS.textScale,
+                spinTimeMs:      typeof p.spinTimeMs === 'number' ? p.spinTimeMs : WHEEL_DEFAULT_PREFS.spinTimeMs,
+                hubSize:         typeof p.hubSize === 'number' ? p.hubSize : WHEEL_DEFAULT_PREFS.hubSize,
+                showHints:       p.showHints !== false,
+                textOuter:       p.textOuter === true,
+                dynamicRotation: p.dynamicRotation === true,
             };
         }
     } catch {}
@@ -178,6 +182,34 @@ class QuestionsWheel {
                 if (!document.getElementById('wheelModal').hidden && this.selected) {
                     this.applyHintsButton();
                 }
+            };
+        }
+
+        let outerSwitch = document.getElementById('wheelTextOuterSwitch');
+        let outerRow = document.getElementById('wheelTextOuterRow');
+        let updateOuterSwitch = () => outerSwitch && outerSwitch.classList.toggle('on', this.prefs.textOuter);
+        updateOuterSwitch();
+        if (outerRow) {
+            outerRow.onclick = (e) => {
+                e.preventDefault();
+                this.prefs.textOuter = !this.prefs.textOuter;
+                updateOuterSwitch();
+                saveWheelPrefs(this.prefs);
+                this.renderWheel();
+            };
+        }
+
+        let dynSwitch = document.getElementById('wheelDynamicRotationSwitch');
+        let dynRow = document.getElementById('wheelDynamicRotationRow');
+        let updateDynSwitch = () => dynSwitch && dynSwitch.classList.toggle('on', this.prefs.dynamicRotation);
+        updateDynSwitch();
+        if (dynRow) {
+            dynRow.onclick = (e) => {
+                e.preventDefault();
+                this.prefs.dynamicRotation = !this.prefs.dynamicRotation;
+                updateDynSwitch();
+                saveWheelPrefs(this.prefs);
+                this.renderWheel();
             };
         }
 
@@ -371,6 +403,8 @@ class QuestionsWheel {
     appendSectorText(svg, q, cx, cy, radius, midAngle, step) {
         let title = (q.question && q.question.title) || ('Question #' + q.id);
         let textScale = this.prefs.textScale / 100;
+        let textOuter = this.prefs.textOuter;
+        let dynamic = this.prefs.dynamicRotation;
 
         // Hub radius in svg coords. The hub div is sized as a percentage of
         // the wheel diameter (= 2 * cx); its radius is half of that.
@@ -381,21 +415,43 @@ class QuestionsWheel {
         let outerR = radius - pad;
         if (outerR < innerR + 10) outerR = innerR + 10; // degenerate safety
         let availLen = outerR - innerR;
-        let textRadius = (innerR + outerR) / 2;
+
+        // Flip decision: in dynamic mode the absolute screen-space angle
+        // (sector angle + current wheel rotation) drives the flip so labels
+        // stay right-side up after a spin. Otherwise use the static SVG angle.
+        let effAngle = midAngle;
+        if (dynamic) {
+            effAngle = midAngle + (this.rotation || 0);
+            effAngle = ((effAngle + 180) % 360 + 360) % 360 - 180;
+        }
+        let flipped = effAngle > 90 || effAngle < -90;
+
+        // Position: centered (midpoint of the radial range) or anchored at
+        // the outer rim with the text extending inward.
+        let textRadius = textOuter ? outerR : (innerR + outerR) / 2;
         let pos = polarToCartesian(cx, cy, textRadius, midAngle);
 
         // Maximum readable font height for this sector — the text is laid out
         // radially, so its "height" after rotation is bounded by the angular
         // width of the sector at textRadius. The 0.78 factor leaves a tiny gap
-        // between neighbouring labels.
-        let angularLimit = textRadius * (step * Math.PI / 180) * 0.78;
+        // between neighbouring labels. Use midpoint for the constraint even
+        // when outer-aligned, since long labels extend inward into the narrower
+        // part of the sector.
+        let angularLimit = ((innerR + outerR) / 2) * (step * Math.PI / 180) * 0.78;
         let baseFontSize = Math.min(angularLimit, 22);
         let fontSize = Math.max(6, baseFontSize * textScale);
+
+        // text-anchor: when centered we use 'middle'. When outer-aligned the
+        // text should always extend from the rim toward the centre — which
+        // direction "inward" is in the text's local frame depends on flip.
+        let anchor;
+        if (textOuter) anchor = flipped ? 'start' : 'end';
+        else anchor = 'middle';
 
         let txt = document.createElementNS(WHEEL_SVG_NS, 'text');
         txt.setAttribute('x', pos.x);
         txt.setAttribute('y', pos.y);
-        txt.setAttribute('text-anchor', 'middle');
+        txt.setAttribute('text-anchor', anchor);
         txt.setAttribute('dominant-baseline', 'middle');
         txt.setAttribute('fill', '#ffffff');
         txt.setAttribute('font-weight', 'bold');
@@ -405,10 +461,7 @@ class QuestionsWheel {
         txt.setAttribute('stroke-width', Math.max(1, fontSize * 0.1));
         txt.setAttribute('stroke-linejoin', 'round');
 
-        let rotation = midAngle;
-        if (midAngle > 90 || midAngle < -90) {
-            rotation = midAngle + 180;
-        }
+        let rotation = midAngle + (flipped ? 180 : 0);
         txt.setAttribute('transform', 'rotate(' + rotation + ' ' + pos.x + ' ' + pos.y + ')');
         txt.style.pointerEvents = 'none';
         txt.textContent = title;
@@ -552,6 +605,7 @@ class QuestionsWheel {
                 this.spinning = false;
                 this.updateSpinButton();
                 playSound('wheel-land');
+                if (this.prefs.dynamicRotation) this.renderWheel();
                 this.showQuestionModal(picked);
             }
         };
