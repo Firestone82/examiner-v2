@@ -8,9 +8,9 @@ const WHEEL_PREFS_KEY = 'examiner_wheel_prefs';
 
 const WHEEL_DEFAULT_PREFS = {
     size: 100,
-    textScale: 75,
-    spinTimeMs: 4500,
-    hubSize: 18,
+    textScale: 50,
+    spinTimeMs: 4000,
+    hubSize: 15,
     showHints: true,
     textOuter: false,
     dynamicRotation: false,

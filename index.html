@@ -164,36 +164,36 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                     </button>
                     <div id="wheelConfigPanel" class="wheel-config-panel" hidden>
-                        <div class="wheel-config-row">
+                        <div class="wheel-config-row" data-tooltip="Overall wheel size (60 – 200%)">
                             <span class="wheel-config-label">Wheel size</span>
                             <input type="range" id="wheelSizeSlider" min="60" max="200" step="5" value="100">
                             <input type="text" class="wheel-config-value" id="wheelSizeValue" value="100%">
                         </div>
-                        <div class="wheel-config-row">
+                        <div class="wheel-config-row" data-tooltip="Label font size (20 – 400%)">
                             <span class="wheel-config-label">Text size</span>
-                            <input type="range" id="wheelTextSizeSlider" min="20" max="400" step="5" value="75">
-                            <input type="text" class="wheel-config-value" id="wheelTextSizeValue" value="75%">
+                            <input type="range" id="wheelTextSizeSlider" min="20" max="400" step="5" value="50">
+                            <input type="text" class="wheel-config-value" id="wheelTextSizeValue" value="50%">
                         </div>
-                        <div class="wheel-config-row">
+                        <div class="wheel-config-row" data-tooltip="Spin animation duration (1 – 10 s)">
                             <span class="wheel-config-label">Spin time</span>
-                            <input type="range" id="wheelSpinTimeSlider" min="1000" max="10000" step="250" value="4500">
-                            <input type="text" class="wheel-config-value" id="wheelSpinTimeValue" value="4.5s">
+                            <input type="range" id="wheelSpinTimeSlider" min="1000" max="10000" step="250" value="4000">
+                            <input type="text" class="wheel-config-value" id="wheelSpinTimeValue" value="4s">
                         </div>
-                        <div class="wheel-config-row">
+                        <div class="wheel-config-row" data-tooltip="Size of the central SPIN hub (8 – 40%)">
                             <span class="wheel-config-label">Spin button</span>
-                            <input type="range" id="wheelHubSizeSlider" min="8" max="40" step="1" value="18">
-                            <input type="text" class="wheel-config-value" id="wheelHubSizeValue" value="18%">
+                            <input type="range" id="wheelHubSizeSlider" min="8" max="40" step="1" value="15">
+                            <input type="text" class="wheel-config-value" id="wheelHubSizeValue" value="15%">
                         </div>
                         <div class="wheel-config-divider"></div>
-                        <label class="wheel-config-row wheel-config-toggle-row" id="wheelHintsRow">
+                        <label class="wheel-config-row wheel-config-toggle-row" id="wheelHintsRow" data-tooltip="Show the 'Show hint' button in the question modal">
                             <span class="wheel-config-label">Show hints</span>
                             <span class="sound-switch" id="wheelHintsSwitch"></span>
                         </label>
-                        <label class="wheel-config-row wheel-config-toggle-row" id="wheelTextOuterRow">
+                        <label class="wheel-config-row wheel-config-toggle-row" id="wheelTextOuterRow" data-tooltip="Place labels at the outer rim instead of centred in the sector">
                             <span class="wheel-config-label">Align to outer side</span>
                             <span class="sound-switch" id="wheelTextOuterSwitch"></span>
                         </label>
-                        <label class="wheel-config-row wheel-config-toggle-row" id="wheelDynamicRotationRow">
+                        <label class="wheel-config-row wheel-config-toggle-row" id="wheelDynamicRotationRow" data-tooltip="Re-orient labels after each spin so none appear upside-down">
                             <span class="wheel-config-label">Auto rotate</span>
                             <span class="sound-switch" id="wheelDynamicRotationSwitch"></span>
                         </label>

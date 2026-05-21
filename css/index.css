@@ -1321,6 +1321,33 @@ p.answer.dismissed {
     margin: 0.2rem 0;
 }
 
+.wheel-config-row[data-tooltip] {
+    position: relative;
+}
+
+.wheel-config-row[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 0.9rem;
+    top: 100%;
+    background: #111;
+    color: #bbb;
+    padding: 0.28rem 0.55rem;
+    border-radius: 3px;
+    font-size: 0.74rem;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 300;
+    border: 1px solid #2a2a2a;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+
+.wheel-config-row[data-tooltip]:hover::after {
+    opacity: 1;
+}
+
 
 /* Markdown hint rendering – tame the default md.css sizing for compact display */
 .wheel-modal-answer zero-md {
