@@ -197,6 +197,19 @@
                             <span class="wheel-config-label">Auto rotate</span>
                             <span class="sound-switch" id="wheelDynamicRotationSwitch"></span>
                         </label>
+                        <label class="wheel-config-row wheel-config-toggle-row" id="wheelCenteredRow" data-tooltip="Vertically centre the wheel in the available viewport">
+                            <span class="wheel-config-label">Centre on screen</span>
+                            <span class="sound-switch" id="wheelCenteredSwitch"></span>
+                        </label>
+                        <label class="wheel-config-row wheel-config-toggle-row" id="wheelTimerRow" data-tooltip="Run a timer while a question is open">
+                            <span class="wheel-config-label">Timer</span>
+                            <span class="sound-switch" id="wheelTimerSwitch"></span>
+                        </label>
+                        <div class="wheel-config-divider"></div>
+                        <div class="wheel-config-row wheel-config-action-row" id="wheelGroupsManageRow" data-tooltip="Create / edit colour groups">
+                            <span class="wheel-config-label">Question groups</span>
+                            <button class="wheel-config-action-btn" id="wheelGroupsManageBtn" type="button">Manage…</button>
+                        </div>
                     </div>
                     <button class="sound-toggle-btn wheel-sound-btn" id="wheelSoundButton" data-panel="wheelSoundPanel" onclick="toggleSound(event)" title="Sounds"></button>
                     <div id="wheelSoundPanel" class="sound-panel" hidden></div>
@@ -214,6 +227,9 @@
 
             <div class="uk-width-1-4@l uk-width-1-5@xl">
                 <div class="sidebar">
+                    <span class="section-title darker wheel-time-section" id="wheelTimeSection" hidden>Time</span>
+                    <span class="timer wheel-timer" id="wheelTimer" hidden>00 : 00</span>
+
                     <span class="section-title darker">Questions
                         <button class="wheel-showall-btn" id="wheelShowAllBtn" title="Show all hidden questions">⟳</button>
                         <button class="wheel-search-btn" id="wheelSearchBtn" title="Search questions"><span uk-icon="search"></span></button>
@@ -229,6 +245,20 @@
                         Click a question to toggle it on the wheel.
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Wheel groups manager modal -->
+    <div id="wheelGroupsModal" hidden>
+        <div id="wheelGroupsModalContent">
+            <div class="wheel-groups-modal-header">
+                <span class="wheel-groups-modal-title">Question groups</span>
+                <button id="wheelGroupsModalClose" title="Close">&times;</button>
+            </div>
+            <div id="wheelGroupsManagerBody"></div>
+            <div class="wheel-groups-modal-footer">
+                <button id="wheelGroupsAddBtn" class="uk-button uk-button-default" type="button">+ Add group</button>
             </div>
         </div>
     </div>
@@ -257,7 +287,7 @@
     <script src="js/utils.js?v=6"></script>
     <script src="js/examiner.js?v=6"></script>
     <script src="js/interpret.js?v=6"></script>
-    <script src="js/wheel.js?v=9"></script>
+    <script src="js/wheel.js?v=10"></script>
     <script src="js/index.js?v=6"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/uikit/3.5.9/js/uikit.min.js"

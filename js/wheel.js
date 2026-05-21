@@ -5,6 +5,8 @@
 const WHEEL_SVG_NS = 'http://www.w3.org/2000/svg';
 const WHEEL_DEFAULT_COLOR = '#888888';
 const WHEEL_PREFS_KEY = 'examiner_wheel_prefs';
+const WHEEL_GROUPS_KEY = 'examiner_wheel_groups';
+const WHEEL_QUESTION_GROUPS_KEY = 'examiner_wheel_question_groups';
 
 const WHEEL_DEFAULT_PREFS = {
     size: 100,
@@ -14,6 +16,8 @@ const WHEEL_DEFAULT_PREFS = {
     showHints: true,
     textOuter: false,
     dynamicRotation: false,
+    centered: true,
+    timerEnabled: false,
 };
 
 let wheelInstance = null;
@@ -30,6 +34,8 @@ function loadWheelPrefs() {
                 showHints:       p.showHints !== false,
                 textOuter:       p.textOuter === true,
                 dynamicRotation: p.dynamicRotation === true,
+                centered:        p.centered !== false,
+                timerEnabled:    p.timerEnabled === true,
             };
         }
     } catch {}
@@ -38,6 +44,36 @@ function loadWheelPrefs() {
 
 function saveWheelPrefs(prefs) {
     try { localStorage.setItem(WHEEL_PREFS_KEY, JSON.stringify(prefs)); } catch {}
+}
+
+// Groups + question→group assignments are stored per DLC name.
+function loadWheelGroups(dlcName) {
+    try {
+        let all = JSON.parse(localStorage.getItem(WHEEL_GROUPS_KEY)) || {};
+        let g = all[dlcName];
+        return Array.isArray(g) ? g : [];
+    } catch { return []; }
+}
+function saveWheelGroups(dlcName, groups) {
+    try {
+        let all = JSON.parse(localStorage.getItem(WHEEL_GROUPS_KEY)) || {};
+        all[dlcName] = groups;
+        localStorage.setItem(WHEEL_GROUPS_KEY, JSON.stringify(all));
+    } catch {}
+}
+function loadQuestionGroups(dlcName) {
+    try {
+        let all = JSON.parse(localStorage.getItem(WHEEL_QUESTION_GROUPS_KEY)) || {};
+        let g = all[dlcName];
+        return (g && typeof g === 'object') ? g : {};
+    } catch { return {}; }
+}
+function saveQuestionGroups(dlcName, mapping) {
+    try {
+        let all = JSON.parse(localStorage.getItem(WHEEL_QUESTION_GROUPS_KEY)) || {};
+        all[dlcName] = mapping;
+        localStorage.setItem(WHEEL_QUESTION_GROUPS_KEY, JSON.stringify(all));
+    } catch {}
 }
 
 function startWheel(dlc) {
@@ -50,7 +86,7 @@ function startWheel(dlc) {
     if (nameEl) nameEl.innerText = dlc.name || 'Questions Wheel';
     document.title = (dlc.name || 'Questions Wheel') + ' - Examiner v2';
 
-    wheelInstance = new QuestionsWheel(dlc.data);
+    wheelInstance = new QuestionsWheel(dlc.data, dlc.name || 'Wheel');
     wheelInstance.attach();
 }
 
@@ -69,7 +105,7 @@ function easeOutQuint(t) {
 }
 
 class QuestionsWheel {
-    constructor(questions) {
+    constructor(questions, dlcName) {
         // Master list (input order). The sidebar always renders this set,
         // sorted by color, so it stays easy to find a question.
         this.questions = questions.slice();
@@ -83,6 +119,11 @@ class QuestionsWheel {
         this.searchQuery = '';
         this.prefs = loadWheelPrefs();
         this.hintRevealed = false;
+        this.dlcName = dlcName || 'default';
+        this.groups = loadWheelGroups(this.dlcName);
+        this.questionGroups = loadQuestionGroups(this.dlcName);
+        this.timerInterval = null;
+        this.timerStart = 0;
     }
 
     get active() {
@@ -93,6 +134,8 @@ class QuestionsWheel {
         this.applySize();
         this.applyTextScale();
         this.applyHubSize();
+        this.applyCentered();
+        this.applyTimerVisibility();
 
         let hub = document.getElementById('wheelHub');
         if (hub) hub.onclick = () => this.spin();
@@ -258,6 +301,61 @@ class QuestionsWheel {
             };
         }
 
+        let centeredSwitch = document.getElementById('wheelCenteredSwitch');
+        let centeredRow = document.getElementById('wheelCenteredRow');
+        let updateCenteredSwitch = () => centeredSwitch && centeredSwitch.classList.toggle('on', this.prefs.centered);
+        updateCenteredSwitch();
+        if (centeredRow) {
+            centeredRow.onclick = (e) => {
+                e.preventDefault();
+                this.prefs.centered = !this.prefs.centered;
+                updateCenteredSwitch();
+                saveWheelPrefs(this.prefs);
+                this.applyCentered();
+            };
+        }
+
+        let timerSwitch = document.getElementById('wheelTimerSwitch');
+        let timerRow = document.getElementById('wheelTimerRow');
+        let updateTimerSwitch = () => timerSwitch && timerSwitch.classList.toggle('on', this.prefs.timerEnabled);
+        updateTimerSwitch();
+        if (timerRow) {
+            timerRow.onclick = (e) => {
+                e.preventDefault();
+                this.prefs.timerEnabled = !this.prefs.timerEnabled;
+                updateTimerSwitch();
+                saveWheelPrefs(this.prefs);
+                this.applyTimerVisibility();
+                // If a question is open, the timer should start counting
+                // right away when newly enabled, and stop when disabled.
+                if (!this.prefs.timerEnabled) this.stopTimer();
+                else if (this.selected) this.startTimer();
+            };
+        }
+
+        let groupsBtn = document.getElementById('wheelGroupsManageBtn');
+        if (groupsBtn) {
+            groupsBtn.onclick = (e) => {
+                e.stopPropagation();
+                this.openGroupsManager();
+            };
+        }
+
+        let groupsClose = document.getElementById('wheelGroupsModalClose');
+        if (groupsClose) {
+            groupsClose.onclick = () => { document.getElementById('wheelGroupsModal').hidden = true; };
+        }
+        let groupsAdd = document.getElementById('wheelGroupsAddBtn');
+        if (groupsAdd) {
+            groupsAdd.onclick = () => this.addGroup();
+        }
+        let groupsModal = document.getElementById('wheelGroupsModal');
+        if (groupsModal) {
+            groupsModal.addEventListener('click', (e) => {
+                if (e.target === groupsModal) groupsModal.hidden = true;
+            });
+        }
+
         // Close config panel on outside click
         let configPanel = document.getElementById('wheelConfigPanel');
         let configBtn = document.getElementById('wheelConfigButton');
@@ -335,6 +433,45 @@ class QuestionsWheel {
     applyHubSize() {
         let view = document.getElementById('wheelView');
         if (view) view.style.setProperty('--wheel-hub-size', this.prefs.hubSize + '%');
+    }
+
+    applyCentered() {
+        let view = document.getElementById('wheelView');
+        if (view) view.classList.toggle('wheel-centered', this.prefs.centered);
+    }
+
+    applyTimerVisibility() {
+        let sec = document.getElementById('wheelTimeSection');
+        let timer = document.getElementById('wheelTimer');
+        let on = this.prefs.timerEnabled;
+        if (sec) sec.hidden = !on;
+        if (timer) timer.hidden = !on;
+    }
+
+    startTimer() {
+        if (!this.prefs.timerEnabled) return;
+        if (this.timerInterval) return;
+        this.timerStart = Date.now();
+        let render = () => {
+            let el = document.getElementById('wheelTimer');
+            if (!el) return;
+            let ms = Date.now() - this.timerStart;
+            let s = Math.floor(ms / 1000);
+            let m = Math.floor(s / 60);
+            let h = Math.floor(m / 60);
+            el.innerText = (h > 0 ? String(h).padStart(2, '0') + ' : ' : '')
+                + String(m % 60).padStart(2, '0') + ' : '
+                + String(s % 60).padStart(2, '0');
+        };
+        render();
+        this.timerInterval = setInterval(render, 500);
+    }
+
+    stopTimer() {
+        if (this.timerInterval) clearInterval(this.timerInterval);
+        this.timerInterval = null;
+        let el = document.getElementById('wheelTimer');
+        if (el) el.innerText = '00 : 00';
     }
 
     updateHubSizeLabel() {
@@ -428,6 +565,10 @@ class QuestionsWheel {
     }
 
     colorFor(q) {
+        if (q && this.questionGroups && this.questionGroups[q.id]) {
+            let grp = this.groups.find(g => g.name === this.questionGroups[q.id]);
+            if (grp && typeof grp.color === 'string') return grp.color;
+        }
         let c = q && q.question && q.question.color;
         if (typeof c === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(c)) return c;
         return WHEEL_DEFAULT_COLOR;
@@ -542,8 +683,58 @@ class QuestionsWheel {
         list.innerHTML = '';
         let q = this.searchQuery;
 
-        // Sort by hue so same-color questions are grouped together,
-        // then by id for stability inside a color group.
+        let matchesQuery = (question) => {
+            if (!q) return true;
+            let title = (question.question && question.question.title) || ('Question #' + question.id);
+            return title.toLowerCase().includes(q);
+        };
+
+        let useGroups = this.groups.length > 0
+            && this.questions.some(qq => this.questionGroups[qq.id]);
+
+        if (useGroups) {
+            let buckets = {};
+            this.groups.forEach(g => { buckets[g.name] = []; });
+            let ungrouped = [];
+
+            this.questions.forEach(question => {
+                if (!matchesQuery(question)) return;
+                let gname = this.questionGroups[question.id];
+                if (gname && buckets[gname]) buckets[gname].push(question);
+                else ungrouped.push(question);
+            });
+
+            this.groups.forEach(g => {
+                let items = buckets[g.name];
+                if (!items || items.length === 0) return;
+                let header = document.createElement('div');
+                header.className = 'wheel-group-header';
+                header.style.borderLeftColor = g.color;
+                header.textContent = g.name;
+                list.appendChild(header);
+                items.sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
+                items.forEach(question => list.appendChild(this.makeSidebarItem(question)));
+            });
+
+            if (ungrouped.length > 0) {
+                let header = document.createElement('div');
+                header.className = 'wheel-group-header';
+                header.style.borderLeftColor = '#555';
+                header.textContent = 'Ungrouped';
+                list.appendChild(header);
+                ungrouped.sort((a, b) => {
+                    let ha = hexToHue(this.colorFor(a));
+                    let hb = hexToHue(this.colorFor(b));
+                    if (ha !== hb) return ha - hb;
+                    return (a.id ?? 0) - (b.id ?? 0);
+                });
+                ungrouped.forEach(question => list.appendChild(this.makeSidebarItem(question)));
+            }
+            return;
+        }
+
+        // Default: sort by hue so same-color questions are next to each
+        // other, then by id for stability within a color group.
         let sorted = this.questions.slice().sort((a, b) => {
             let ha = hexToHue(this.colorFor(a));
             let hb = hexToHue(this.colorFor(b));
@@ -552,30 +743,220 @@ class QuestionsWheel {
         });
 
         sorted.forEach(question => {
-            let title = (question.question && question.question.title) || ('Question #' + question.id);
-            if (q && !title.toLowerCase().includes(q)) return;
+            if (!matchesQuery(question)) return;
+            list.appendChild(this.makeSidebarItem(question));
+        });
+    }
 
-            let isHidden = this.hidden.has(question.id);
-            let item = document.createElement('div');
-            item.className = 'wheel-question-item' + (isHidden ? ' off' : '');
-            item.onclick = () => this.toggleQuestion(question.id);
+    makeSidebarItem(question) {
+        let title = (question.question && question.question.title) || ('Question #' + question.id);
+        let isHidden = this.hidden.has(question.id);
+        let item = document.createElement('div');
+        item.className = 'wheel-question-item' + (isHidden ? ' off' : '');
+        item.onclick = () => this.toggleQuestion(question.id);
 
-            let dot = document.createElement('span');
-            dot.className = 'wheel-question-color';
-            dot.style.background = this.colorFor(question);
+        let dot = document.createElement('span');
+        dot.className = 'wheel-question-color';
+        dot.style.background = this.colorFor(question);
+        dot.title = 'Click to assign a group';
+        dot.onclick = (e) => {
+            e.stopPropagation();
+            this.showGroupPicker(question, dot);
+        };
 
-            let titleEl = document.createElement('span');
-            titleEl.className = 'wheel-question-title';
-            titleEl.textContent = title;
+        let titleEl = document.createElement('span');
+        titleEl.className = 'wheel-question-title';
+        titleEl.textContent = title;
 
-            let toggle = document.createElement('span');
-            toggle.className = 'wheel-question-toggle';
-            toggle.textContent = isHidden ? '✕' : '✓';
+        let toggle = document.createElement('span');
+        toggle.className = 'wheel-question-toggle';
+        toggle.textContent = isHidden ? '✕' : '✓';
 
-            item.appendChild(dot);
-            item.appendChild(titleEl);
-            item.appendChild(toggle);
-            list.appendChild(item);
+        item.appendChild(dot);
+        item.appendChild(titleEl);
+        item.appendChild(toggle);
+
+        // Full-title tooltip on hover, matching prompter-mode behaviour.
+        setupTooltip(item, title);
+
+        return item;
+    }
+
+    showGroupPicker(question, anchor) {
+        let existing = document.getElementById('wheelGroupPicker');
+        if (existing) existing.remove();
+
+        let pop = document.createElement('div');
+        pop.id = 'wheelGroupPicker';
+        pop.className = 'wheel-group-picker';
+
+        let makeItem = (label, color, selected, onPick) => {
+            let row = document.createElement('div');
+            row.className = 'wheel-group-picker-item' + (selected ? ' selected' : '');
+            if (color) {
+                let d = document.createElement('span');
+                d.className = 'wheel-question-color';
+                d.style.background = color;
+                row.appendChild(d);
+            }
+            let lbl = document.createElement('span');
+            lbl.textContent = label;
+            row.appendChild(lbl);
+            row.onclick = (e) => {
+                e.stopPropagation();
+                onPick();
+                pop.remove();
+            };
+            return row;
+        };
+
+        let current = this.questionGroups[question.id];
+        pop.appendChild(makeItem('— None —', null, !current, () => {
+            delete this.questionGroups[question.id];
+            saveQuestionGroups(this.dlcName, this.questionGroups);
+            this.render();
+        }));
+
+        this.groups.forEach(g => {
+            pop.appendChild(makeItem(g.name, g.color, current === g.name, () => {
+                this.questionGroups[question.id] = g.name;
+                saveQuestionGroups(this.dlcName, this.questionGroups);
+                this.render();
+            }));
+        });
+
+        let divider = document.createElement('div');
+        divider.className = 'wheel-group-picker-divider';
+        pop.appendChild(divider);
+
+        let manage = document.createElement('div');
+        manage.className = 'wheel-group-picker-item wheel-group-picker-manage';
+        manage.textContent = 'Manage groups…';
+        manage.onclick = (e) => {
+            e.stopPropagation();
+            pop.remove();
+            this.openGroupsManager();
+        };
+        pop.appendChild(manage);
+
+        document.body.appendChild(pop);
+        let rect = anchor.getBoundingClientRect();
+        pop.style.left = rect.left + 'px';
+        pop.style.top = (rect.bottom + 4) + 'px';
+        let pr = pop.getBoundingClientRect();
+        if (pr.right > window.innerWidth) {
+            pop.style.left = (window.innerWidth - pr.width - 8) + 'px';
+        }
+        if (pr.bottom > window.innerHeight) {
+            pop.style.top = (rect.top - pr.height - 4) + 'px';
+        }
+
+        let onDocClick = (e) => {
+            if (!pop.contains(e.target)) {
+                pop.remove();
+                document.removeEventListener('click', onDocClick, true);
+            }
+        };
+        setTimeout(() => document.addEventListener('click', onDocClick, true), 0);
+    }
+
+    openGroupsManager() {
+        let modal = document.getElementById('wheelGroupsModal');
+        if (!modal) return;
+        modal.hidden = false;
+        this.renderGroupsManager();
+    }
+
+    addGroup() {
+        // Pick a default color that hasn't been used yet, falling back to a
+        // bright palette pick.
+        let palette = ['#e53935','#1e88e5','#43a047','#fb8c00','#8e24aa','#00897b','#f4511e','#3949ab'];
+        let used = new Set(this.groups.map(g => g.color));
+        let color = palette.find(c => !used.has(c)) || palette[this.groups.length % palette.length];
+        let name = 'Group ' + (this.groups.length + 1);
+        this.groups.push({ name, color });
+        saveWheelGroups(this.dlcName, this.groups);
+        this.renderGroupsManager();
+        this.render();
+    }
+
+    renderGroupsManager() {
+        let body = document.getElementById('wheelGroupsManagerBody');
+        if (!body) return;
+        body.innerHTML = '';
+
+        if (this.groups.length === 0) {
+            let empty = document.createElement('div');
+            empty.className = 'wheel-groups-empty';
+            empty.textContent = 'No groups yet. Click "+ Add group" to create one.';
+            body.appendChild(empty);
+            return;
+        }
+
+        this.groups.forEach((g, idx) => {
+            let row = document.createElement('div');
+            row.className = 'wheel-groups-row';
+
+            let colorInput = document.createElement('input');
+            colorInput.type = 'color';
+            colorInput.value = g.color;
+            colorInput.className = 'wheel-groups-color';
+            colorInput.oninput = () => {
+                this.groups[idx].color = colorInput.value;
+                saveWheelGroups(this.dlcName, this.groups);
+                this.render();
+            };
+
+            let nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.value = g.name;
+            nameInput.className = 'wheel-groups-name';
+            nameInput.placeholder = 'Group name';
+            let commitName = () => {
+                let newName = nameInput.value.trim();
+                if (!newName || newName === this.groups[idx].name) {
+                    nameInput.value = this.groups[idx].name;
+                    return;
+                }
+                // Disallow duplicate names — they identify a group.
+                if (this.groups.some((gg, i) => i !== idx && gg.name === newName)) {
+                    nameInput.value = this.groups[idx].name;
+                    return;
+                }
+                let oldName = this.groups[idx].name;
+                Object.keys(this.questionGroups).forEach(k => {
+                    if (this.questionGroups[k] === oldName) this.questionGroups[k] = newName;
+                });
+                this.groups[idx].name = newName;
+                saveWheelGroups(this.dlcName, this.groups);
+                saveQuestionGroups(this.dlcName, this.questionGroups);
+                this.render();
+            };
+            nameInput.onchange = commitName;
+            nameInput.addEventListener('keydown', e => {
+                if (e.key === 'Enter') { e.preventDefault(); commitName(); nameInput.blur(); }
+            });
+
+            let del = document.createElement('button');
+            del.className = 'wheel-groups-delete';
+            del.textContent = '✕';
+            del.title = 'Delete group';
+            del.onclick = () => {
+                let oldName = this.groups[idx].name;
+                this.groups.splice(idx, 1);
+                Object.keys(this.questionGroups).forEach(k => {
+                    if (this.questionGroups[k] === oldName) delete this.questionGroups[k];
+                });
+                saveWheelGroups(this.dlcName, this.groups);
+                saveQuestionGroups(this.dlcName, this.questionGroups);
+                this.renderGroupsManager();
+                this.render();
+            };
+
+            row.appendChild(colorInput);
+            row.appendChild(nameInput);
+            row.appendChild(del);
+            body.appendChild(row);
         });
     }
 
@@ -716,6 +1097,7 @@ class QuestionsWheel {
 
         this.applyHintsButton();
         modal.hidden = false;
+        this.startTimer();
     }
 
     applyHintsButton() {
@@ -761,6 +1143,7 @@ class QuestionsWheel {
         document.getElementById('wheelModal').hidden = true;
         this.selected = null;
         this.hintRevealed = false;
+        this.stopTimer();
     }
 
     hideSelected() {
@@ -769,8 +1152,16 @@ class QuestionsWheel {
             return;
         }
         this.hidden.add(this.selected.id);
+        let isLast = this.active.length === 0;
         this.closeModal();
         this.resetSpinner();
+        if (isLast) {
+            playSound('finish');
+            document.getElementById('wheelView').hidden = true;
+            document.body.style.overflow = '';
+            showEndscreen('Congratulations!', 'You have answered all questions!');
+            return;
+        }
         this.render();
     }
 }
