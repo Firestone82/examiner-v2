@@ -3,6 +3,13 @@
     "version": "1.4",
     "type": "wheeler",
     "name": "Wheel Example",
+    "groups": [
+        { "id": "os",     "name": "Operating Systems", "color": "#e53935" },
+        { "id": "net",    "name": "Networking",        "color": "#1e88e5" },
+        { "id": "algo",   "name": "Algorithms",        "color": "#43a047" },
+        { "id": "db",     "name": "Databases",         "color": "#fb8c00" },
+        { "id": "design", "name": "Software Design",   "color": "#8e24aa" }
+    ],
     "data": [
         {
             "id": 0,
@@ -11,7 +18,7 @@
                 "type": "text",
                 "content": "Describe in detail what the lifecycle of a process looks like in a modern operating system, from creation through termination.",
                 "title": "Process lifecycle",
-                "color": "#e53935"
+                "group": "os"
             },
             "answers": [
                 "**Stages:**\n\n- `fork` / `exec` — creation\n- *ready* → *running* → *waiting* → *terminated*\n\nScheduler moves processes between states."
@@ -24,7 +31,7 @@
                 "type": "text",
                 "content": "Explain the difference between TCP and UDP and when you would choose one over the other.",
                 "title": "TCP vs UDP",
-                "color": "#1e88e5"
+                "group": "net"
             },
             "answers": [
                 "- **TCP** — reliable, ordered, connection-oriented\n- **UDP** — fast, no delivery guarantees, connectionless\n\nUse TCP for files / HTTP, UDP for games / streaming."
@@ -37,7 +44,7 @@
                 "type": "text",
                 "content": "Walk through the algorithmic complexity of common sorting algorithms — at least bubble, merge, quick and heap.",
                 "title": "Sorting complexity",
-                "color": "#43a047"
+                "group": "algo"
             },
             "answers": [
                 "| Algorithm | Avg | Worst |\n|-----------|-----|-------|\n| Bubble    | O(n²) | O(n²) |\n| Merge     | O(n log n) | O(n log n) |\n| Quick     | O(n log n) | O(n²) |\n| Heap      | O(n log n) | O(n log n) |"
@@ -50,7 +57,7 @@
                 "type": "text",
                 "content": "What is normalization in databases? Describe 1NF, 2NF and 3NF.",
                 "title": "DB normalization",
-                "color": "#fb8c00"
+                "group": "db"
             },
             "answers": [
                 "1. **1NF** — atomic values\n2. **2NF** — no partial dependencies\n3. **3NF** — no transitive dependencies"
@@ -63,7 +70,7 @@
                 "type": "text",
                 "content": "Explain the SOLID principles of object-oriented design.",
                 "title": "SOLID principles",
-                "color": "#8e24aa"
+                "group": "design"
             },
             "answers": [
                 "- **S**ingle responsibility\n- **O**pen / closed\n- **L**iskov substitution\n- **I**nterface segregation\n- **D**ependency inversion"
@@ -76,7 +83,7 @@
                 "type": "text",
                 "content": "What does the OSI model look like and what does each layer do?",
                 "title": "OSI model",
-                "color": "#00897b"
+                "group": "net"
             },
             "answers": [
                 "Physical → Data Link → Network → Transport → Session → Presentation → Application"
@@ -89,7 +96,7 @@
                 "type": "text",
                 "content": "Describe how a hash table works and how collisions are typically resolved.",
                 "title": "Hash tables",
-                "color": "#f4511e"
+                "group": "algo"
             },
             "answers": [
                 "Hash key → bucket index. Collisions: **chaining** (linked list) or **open addressing** (probe to next slot)."
@@ -102,10 +109,62 @@
                 "type": "text",
                 "content": "What are the differences between processes and threads?",
                 "title": "Process vs thread",
-                "color": "#3949ab"
+                "group": "os"
             },
             "answers": [
                 "- **Processes** have their own memory space\n- **Threads** share memory within a process"
+            ]
+        },
+        {
+            "id": 8,
+            "type": "self-assessment",
+            "question": {
+                "type": "text",
+                "content": "Explain how a three-way TCP handshake establishes a connection between two hosts.",
+                "title": "TCP handshake",
+                "group": "net"
+            },
+            "answers": [
+                "1. Client → **SYN**\n2. Server → **SYN-ACK**\n3. Client → **ACK**\n\nConnection is now established and ready for data transfer."
+            ]
+        },
+        {
+            "id": 9,
+            "type": "self-assessment",
+            "question": {
+                "type": "text",
+                "content": "Walk through how a context switch works between two processes on a single CPU core.",
+                "title": "Context switch",
+                "group": "os"
+            },
+            "answers": [
+                "Save the current process's CPU registers / program counter into its PCB, load the next process's PCB into the CPU, switch the memory map, then resume execution from the new PC."
+            ]
+        },
+        {
+            "id": 10,
+            "type": "self-assessment",
+            "question": {
+                "type": "text",
+                "content": "Compare binary search trees and hash tables — when would you reach for one over the other?",
+                "title": "BST vs hash table",
+                "group": "algo"
+            },
+            "answers": [
+                "- **BST** keeps keys ordered, supports range queries, O(log n) average\n- **Hash table** is unordered, O(1) average lookup but no range queries\n\nReach for a BST when you need ordering, a hash table when you only need fast key lookup."
+            ]
+        },
+        {
+            "id": 11,
+            "type": "self-assessment",
+            "question": {
+                "type": "text",
+                "content": "What is an index in a relational database and how does it speed up queries?",
+                "title": "Database indexes",
+                "group": "db"
+            },
+            "answers": [
+                "A secondary data structure (usually a B-tree) that maps key values to row locations. Lets the engine skip a full table scan and jump straight to matching rows, at the cost of extra writes and storage."
             ]
         }
     ]
