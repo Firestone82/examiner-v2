@@ -386,15 +386,23 @@ class QuestionsWheel {
         txt.textContent = title;
         svg.appendChild(txt);
 
-        // Squeeze the full title into the available radial space rather than
-        // truncating it. textLength + lengthAdjust scales glyph widths and
-        // letter spacing so the whole word fits — but only when the natural
-        // width actually exceeds the budget (short titles stay un-stretched).
+        // Truncate to whatever naturally fits the radial space and add "…".
+        // No glyph squeezing or letter-spacing changes — text renders at its
+        // natural width and gets shorter when it doesn't fit.
         try {
-            let bbox = txt.getBBox();
-            if (bbox.width > availLen && bbox.width > 0) {
-                txt.setAttribute('textLength', availLen);
-                txt.setAttribute('lengthAdjust', 'spacingAndGlyphs');
+            if (txt.getBBox().width > availLen) {
+                let lo = 0, hi = title.length - 1, best = 0;
+                while (lo <= hi) {
+                    let mid = (lo + hi) >> 1;
+                    txt.textContent = title.substring(0, mid) + '…';
+                    if (txt.getBBox().width <= availLen) {
+                        best = mid;
+                        lo = mid + 1;
+                    } else {
+                        hi = mid - 1;
+                    }
+                }
+                txt.textContent = best === 0 ? '…' : title.substring(0, best) + '…';
             }
         } catch (e) {}
     }
