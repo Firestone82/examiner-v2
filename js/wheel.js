@@ -669,20 +669,54 @@ class QuestionsWheel {
             this.groups.forEach(g => {
                 let items = buckets[g.name];
                 if (!items || items.length === 0) return;
+                let allHidden = items.every(q => this.hidden.has(q.id));
                 let header = document.createElement('div');
                 header.className = 'wheel-group-header';
                 header.style.borderLeftColor = g.color;
-                header.textContent = g.name;
+                let label = document.createElement('span');
+                label.className = 'wheel-group-header-label';
+                label.textContent = g.name;
+                header.appendChild(label);
+                let toggleBtn = document.createElement('button');
+                toggleBtn.className = 'wheel-group-toggle-btn';
+                toggleBtn.textContent = allHidden ? '⊕' : '⊖';
+                toggleBtn.title = allHidden ? 'Show group' : 'Hide group';
+                toggleBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    if (allHidden) items.forEach(q => this.hidden.delete(q.id));
+                    else items.forEach(q => this.hidden.add(q.id));
+                    this.resetSpinner();
+                    this.render();
+                    playSound(allHidden ? 'select' : 'deselect');
+                };
+                header.appendChild(toggleBtn);
                 list.appendChild(header);
                 items.sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
                 items.forEach(question => list.appendChild(this.makeSidebarItem(question)));
             });
 
             if (ungrouped.length > 0) {
+                let ungroupedAllHidden = ungrouped.every(q => this.hidden.has(q.id));
                 let header = document.createElement('div');
                 header.className = 'wheel-group-header';
                 header.style.borderLeftColor = '#555';
-                header.textContent = 'Ungrouped';
+                let label = document.createElement('span');
+                label.className = 'wheel-group-header-label';
+                label.textContent = 'Ungrouped';
+                header.appendChild(label);
+                let toggleBtn = document.createElement('button');
+                toggleBtn.className = 'wheel-group-toggle-btn';
+                toggleBtn.textContent = ungroupedAllHidden ? '⊕' : '⊖';
+                toggleBtn.title = ungroupedAllHidden ? 'Show group' : 'Hide group';
+                toggleBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    if (ungroupedAllHidden) ungrouped.forEach(q => this.hidden.delete(q.id));
+                    else ungrouped.forEach(q => this.hidden.add(q.id));
+                    this.resetSpinner();
+                    this.render();
+                    playSound(ungroupedAllHidden ? 'select' : 'deselect');
+                };
+                header.appendChild(toggleBtn);
                 list.appendChild(header);
                 ungrouped.sort((a, b) => {
                     let ha = hexToHue(this.colorFor(a));
@@ -871,7 +905,15 @@ class QuestionsWheel {
                 mdEl.setAttribute('src', 'data:text/plain;charset=utf-8,' + encodeURIComponent(content));
                 let tpl = document.createElement('template');
                 tpl.innerHTML = '<link rel="stylesheet" href="css/md.css?v=6">'
-                    + '<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/PrismJS/prism@1/themes/prism.min.css"/>';
+                    + '<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/PrismJS/prism@1/themes/prism.min.css"/>'
+                    + '<style>'
+                    + '.markdown-body{font-size:0.78rem!important}'
+                    + '.markdown-body p{font-size:0.78rem!important;font-weight:normal!important;margin:0.15rem 0}'
+                    + '.markdown-body ul,.markdown-body ol,.markdown-body li{font-size:0.78rem!important}'
+                    + '.markdown-body h1,.markdown-body h2,.markdown-body h3{font-size:0.9rem!important}'
+                    + '.markdown-body code{font-size:0.72rem!important}'
+                    + 'p{font-size:0.78rem!important;font-weight:normal!important}'
+                    + '</style>';
                 mdEl.appendChild(tpl);
                 row.appendChild(mdEl);
                 list.appendChild(row);

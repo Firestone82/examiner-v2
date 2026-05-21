@@ -1576,7 +1576,10 @@ p.answer.dismissed {
 
 /* Sidebar group header */
 .wheel-group-header {
-    padding: 0.4rem 0.6rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 0.4rem 0.4rem 0.6rem;
     margin: 0.5rem 0 0.3rem;
     color: #ccc;
     font-size: 0.78rem;
@@ -1589,6 +1592,29 @@ p.answer.dismissed {
 
 .wheel-group-header:first-child {
     margin-top: 0;
+}
+
+.wheel-group-header-label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wheel-group-toggle-btn {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0 0.2rem;
+    transition: color 0.12s;
+}
+
+.wheel-group-toggle-btn:hover {
+    color: white;
 }
 
 /* ── Wheel view: left-aligned section / config titles ─────────────────────── */
@@ -1606,11 +1632,6 @@ p.answer.dismissed {
 /* Questions header shares the row with the "show all" toggle. */
 #wheelView .section-title:has(.wheel-showall-btn) {
     padding-left: 2.4rem;
-}
-
-#wheelView .wheel-timer {
-    text-align: left;
-    padding-left: 1rem;
 }
 
 .wheel-config-label {
