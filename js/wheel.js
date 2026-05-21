@@ -40,6 +40,7 @@ function startWheel(dlc) {
     document.getElementById('title').hidden = true;
     document.getElementById('examiner').hidden = true;
     document.getElementById('wheelView').hidden = false;
+    document.body.style.overflow = 'hidden';
 
     let nameEl = document.getElementById('wheel-dlc-name');
     if (nameEl) nameEl.innerText = dlc.name || 'Questions Wheel';
@@ -89,8 +90,6 @@ class QuestionsWheel {
         this.applyTextScale();
         this.applyHubSize();
 
-        let spinBtn = document.getElementById('spinButton');
-        spinBtn.onclick = () => this.spin();
         let hub = document.getElementById('wheelHub');
         if (hub) hub.onclick = () => this.spin();
 
@@ -107,9 +106,12 @@ class QuestionsWheel {
             this.toggleHintReveal();
         };
 
-        let modal = document.getElementById('wheelModal');
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) this.closeModal();
+        // Spacebar triggers spin when the modal is not open
+        document.addEventListener('keydown', (e) => {
+            if (e.code !== 'Space') return;
+            if (!document.getElementById('wheelModal').hidden) return;
+            e.preventDefault();
+            this.spin();
         });
 
         // ── Config panel ─────────────────────────────────────────────────────
@@ -285,16 +287,13 @@ class QuestionsWheel {
     }
 
     updateSpinButton() {
-        let btn = document.getElementById('spinButton');
+        let hub = document.getElementById('wheelHub');
+        if (!hub) return;
         let n = this.active.length;
-        btn.disabled = this.spinning || n === 0;
-        if (n === 0) {
-            btn.innerText = 'No questions to spin';
-        } else if (this.spinning) {
-            btn.innerText = 'Spinning…';
-        } else {
-            btn.innerText = 'SPIN THE WHEEL';
-        }
+        let disabled = this.spinning || n === 0;
+        hub.style.opacity = disabled ? '0.45' : '';
+        hub.style.cursor = disabled ? 'not-allowed' : '';
+        hub.textContent = this.spinning ? '…' : 'SPIN';
     }
 
     renderWheel() {
