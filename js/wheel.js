@@ -285,12 +285,24 @@ class QuestionsWheel {
         if (centeredRow) {
             centeredRow.onclick = (e) => {
                 e.preventDefault();
+                if (this.isMobile()) return;
                 this.prefs.centered = !this.prefs.centered;
                 updateCenteredSwitch();
                 saveWheelPrefs(this.prefs);
                 this.applyCentered();
             };
         }
+        let applyCenteredAvailability = () => {
+            let mobile = this.isMobile();
+            if (centeredRow) {
+                centeredRow.style.opacity = mobile ? '0.38' : '';
+                centeredRow.style.pointerEvents = mobile ? 'none' : '';
+                centeredRow.title = mobile ? 'Not available on small screens' : '';
+            }
+            this.applyCentered();
+        };
+        applyCenteredAvailability();
+        window.addEventListener('resize', applyCenteredAvailability);
 
         let timerSwitch = document.getElementById('wheelTimerSwitch');
         let timerRow = document.getElementById('wheelTimerRow');
@@ -389,9 +401,13 @@ class QuestionsWheel {
         if (view) view.style.setProperty('--wheel-hub-size', this.prefs.hubSize + '%');
     }
 
+    isMobile() {
+        return window.innerWidth <= 600;
+    }
+
     applyCentered() {
         let view = document.getElementById('wheelView');
-        if (view) view.classList.toggle('wheel-centered', this.prefs.centered);
+        if (view) view.classList.toggle('wheel-centered', !this.isMobile() && this.prefs.centered);
     }
 
     applyTimerVisibility() {

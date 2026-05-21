@@ -1559,8 +1559,16 @@ p.answer.dismissed {
 }
 
 @media (max-width: 600px) {
+    #wheelModal {
+        padding: 0.4rem;
+    }
+    #wheelModalBody {
+        padding: 1rem 1.2rem;
+        overflow-x: hidden;
+    }
     #wheelModalButtons {
         flex-direction: column;
+        padding: 0.7rem 1rem 1rem;
     }
 }
 
