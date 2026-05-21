@@ -81,6 +81,7 @@ class QuestionsWheel {
         // of the sidebar order.
         this.wheelOrder = questions.slice();
         this.hidden = new Set();
+        this.collapsedGroups = new Set();
         this.rotation = 0;
         this.spinning = false;
         this.selected = null;
@@ -690,9 +691,22 @@ class QuestionsWheel {
                 let items = buckets[g.name];
                 if (!items || items.length === 0) return;
                 let allHidden = items.every(q => this.hidden.has(q.id));
+                let collapsed = this.collapsedGroups.has(g.name);
                 let header = document.createElement('div');
                 header.className = 'wheel-group-header';
                 header.style.borderLeftColor = g.color;
+                let collapseBtn = document.createElement('button');
+                collapseBtn.className = 'wheel-group-collapse-btn';
+                collapseBtn.textContent = collapsed ? '▸' : '▾';
+                collapseBtn.title = collapsed ? 'Expand group' : 'Collapse group';
+                collapseBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    if (collapsed) this.collapsedGroups.delete(g.name);
+                    else this.collapsedGroups.add(g.name);
+                    this.renderSidebar();
+                    playSound(collapsed ? 'select' : 'deselect');
+                };
+                header.appendChild(collapseBtn);
                 let label = document.createElement('span');
                 label.className = 'wheel-group-header-label';
                 label.textContent = g.name;
@@ -711,15 +725,29 @@ class QuestionsWheel {
                 };
                 header.appendChild(toggleBtn);
                 list.appendChild(header);
+                if (collapsed) return;
                 items.sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
                 items.forEach(question => list.appendChild(this.makeSidebarItem(question)));
             });
 
             if (ungrouped.length > 0) {
                 let ungroupedAllHidden = ungrouped.every(q => this.hidden.has(q.id));
+                let ungroupedCollapsed = this.collapsedGroups.has('__ungrouped__');
                 let header = document.createElement('div');
                 header.className = 'wheel-group-header';
                 header.style.borderLeftColor = '#555';
+                let collapseBtn = document.createElement('button');
+                collapseBtn.className = 'wheel-group-collapse-btn';
+                collapseBtn.textContent = ungroupedCollapsed ? '▸' : '▾';
+                collapseBtn.title = ungroupedCollapsed ? 'Expand group' : 'Collapse group';
+                collapseBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    if (ungroupedCollapsed) this.collapsedGroups.delete('__ungrouped__');
+                    else this.collapsedGroups.add('__ungrouped__');
+                    this.renderSidebar();
+                    playSound(ungroupedCollapsed ? 'select' : 'deselect');
+                };
+                header.appendChild(collapseBtn);
                 let label = document.createElement('span');
                 label.className = 'wheel-group-header-label';
                 label.textContent = 'Ungrouped';
@@ -738,6 +766,7 @@ class QuestionsWheel {
                 };
                 header.appendChild(toggleBtn);
                 list.appendChild(header);
+                if (ungroupedCollapsed) return;
                 ungrouped.sort((a, b) => {
                     let ha = hexToHue(this.colorFor(a));
                     let hb = hexToHue(this.colorFor(b));
