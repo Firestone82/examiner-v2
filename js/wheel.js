@@ -917,7 +917,9 @@ class QuestionsWheel {
 
         let titleEl = document.createElement('div');
         titleEl.className = 'wheel-modal-title';
-        titleEl.textContent = (question.question && question.question.title) || ('Question #' + question.id);
+        let baseTitle = (question.question && question.question.title) || ('Question #' + question.id);
+        let group = this.findGroup(this.questionGroups[question.id]);
+        titleEl.textContent = group ? (group.name + ' • ' + baseTitle) : baseTitle;
         body.appendChild(titleEl);
 
         let contentEl = document.createElement('div');
