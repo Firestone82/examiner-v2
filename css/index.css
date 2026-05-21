@@ -1558,6 +1558,12 @@ p.answer.dismissed {
     background: #444;
 }
 
+@media (max-width: 600px) {
+    #wheelModalButtons {
+        flex-direction: column;
+    }
+}
+
 @media (max-width: 960px) {
     .wheel-container {
         width: min(80vw, 480px);

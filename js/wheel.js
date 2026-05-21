@@ -525,8 +525,12 @@ class QuestionsWheel {
 
     colorFor(q) {
         if (q && this.questionGroups) {
-            let grp = this.findGroup(this.questionGroups[q.id]);
+            let ref = this.questionGroups[q.id];
+            let grp = this.findGroup(ref);
             if (grp && typeof grp.color === 'string') return grp.color;
+            // A raw hex color in the "group" field means "no group, just
+            // this color" — the sidebar will bucket it as ungrouped.
+            if (typeof ref === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(ref)) return ref;
         }
         let c = q && q.question && q.question.color;
         if (typeof c === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(c)) return c;
