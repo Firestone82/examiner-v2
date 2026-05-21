@@ -162,7 +162,7 @@
                     <span id="wheel-dlc-name">Questions Wheel</span>
                 </div>
                 <div class="wheel-stage">
-                    <div class="wheel-container">
+                    <div class="wheel-container" id="wheelContainer">
                         <div class="wheel-pointer"></div>
                         <div class="wheel-spinner" id="wheelSpinner">
                             <svg id="wheelSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600"></svg>
@@ -170,14 +170,24 @@
                         <div class="wheel-hub" id="wheelHub">SPIN</div>
                     </div>
                     <button id="spinButton" class="uk-button uk-button-primary wheel-spin-btn" type="button">SPIN THE WHEEL</button>
+                    <div class="wheel-size-control">
+                        <span class="wheel-size-label">Wheel size</span>
+                        <input type="range" id="wheelSizeSlider" min="60" max="160" step="5" value="100">
+                        <span class="wheel-size-value" id="wheelSizeValue">100%</span>
+                    </div>
                 </div>
             </div>
 
             <div class="uk-width-1-4@l uk-width-1-5@xl">
                 <div class="sidebar">
                     <span class="section-title darker">Questions
+                        <button class="wheel-hints-btn" id="wheelHintsBtn" title="Show / hide answer hints in modal">Hints: ON</button>
+                        <button class="wheel-search-btn" id="wheelSearchBtn" title="Search questions"><span uk-icon="search"></span></button>
                         <button class="wheel-reset-btn" id="wheelResetBtn" title="Show all questions">⟳</button>
                     </span>
+                    <div class="wheel-search-bar" id="wheelSearchBar" hidden>
+                        <input type="text" id="wheelQuestionSearch" class="question-search-input" placeholder="Search...">
+                    </div>
                     <div class="wheel-question-list" id="wheelQuestionList">
                         <!-- JS: Wheel Question List -->
                     </div>
@@ -212,7 +222,7 @@
     <script src="js/utils.js?v=6"></script>
     <script src="js/examiner.js?v=6"></script>
     <script src="js/interpret.js?v=6"></script>
-    <script src="js/wheel.js?v=1"></script>
+    <script src="js/wheel.js?v=2"></script>
     <script src="js/index.js?v=6"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/uikit/3.5.9/js/uikit.min.js"

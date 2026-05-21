@@ -3,10 +3,28 @@
 // shows a modal with the picked question's full content.
 
 const WHEEL_SVG_NS = 'http://www.w3.org/2000/svg';
-const WHEEL_SPIN_DURATION_MS = 4200;
+const WHEEL_SPIN_DURATION_MS = 4500;
 const WHEEL_DEFAULT_COLOR = '#888888';
+const WHEEL_PREFS_KEY = 'examiner_wheel_prefs';
 
 let wheelInstance = null;
+
+function loadWheelPrefs() {
+    try {
+        let p = JSON.parse(localStorage.getItem(WHEEL_PREFS_KEY));
+        if (p && typeof p === 'object') {
+            return {
+                size: typeof p.size === 'number' ? p.size : 100,
+                showHints: p.showHints !== false,
+            };
+        }
+    } catch {}
+    return { size: 100, showHints: true };
+}
+
+function saveWheelPrefs(prefs) {
+    try { localStorage.setItem(WHEEL_PREFS_KEY, JSON.stringify(prefs)); } catch {}
+}
 
 function startWheel(dlc) {
     document.getElementById('title').hidden = true;
@@ -21,6 +39,10 @@ function startWheel(dlc) {
     wheelInstance.attach();
 }
 
+function easeOutQuint(t) {
+    return 1 - Math.pow(1 - t, 5);
+}
+
 class QuestionsWheel {
     constructor(questions) {
         this.questions = questions.slice();
@@ -28,6 +50,8 @@ class QuestionsWheel {
         this.rotation = 0;
         this.spinning = false;
         this.selected = null;
+        this.searchQuery = '';
+        this.prefs = loadWheelPrefs();
     }
 
     get active() {
@@ -35,6 +59,9 @@ class QuestionsWheel {
     }
 
     attach() {
+        this.applySize();
+        this.applyHintsButton();
+
         let spinBtn = document.getElementById('spinButton');
         spinBtn.onclick = () => this.spin();
         let hub = document.getElementById('wheelHub');
@@ -51,7 +78,73 @@ class QuestionsWheel {
         let resetBtn = document.getElementById('wheelResetBtn');
         if (resetBtn) resetBtn.onclick = () => this.resetHidden();
 
+        let sizeSlider = document.getElementById('wheelSizeSlider');
+        if (sizeSlider) {
+            sizeSlider.value = this.prefs.size;
+            sizeSlider.oninput = (e) => {
+                this.prefs.size = parseInt(e.target.value, 10);
+                this.applySize();
+                saveWheelPrefs(this.prefs);
+            };
+        }
+
+        let searchBtn = document.getElementById('wheelSearchBtn');
+        let searchBar = document.getElementById('wheelSearchBar');
+        let searchInput = document.getElementById('wheelQuestionSearch');
+        if (searchBtn) {
+            searchBtn.onclick = () => {
+                searchBar.hidden = !searchBar.hidden;
+                if (!searchBar.hidden) {
+                    searchInput.focus();
+                } else {
+                    searchInput.value = '';
+                    this.searchQuery = '';
+                    this.renderSidebar();
+                }
+            };
+        }
+        if (searchInput) {
+            searchInput.oninput = (e) => {
+                this.searchQuery = e.target.value.trim().toLowerCase();
+                this.renderSidebar();
+            };
+        }
+
+        let hintsBtn = document.getElementById('wheelHintsBtn');
+        if (hintsBtn) {
+            hintsBtn.onclick = () => {
+                this.prefs.showHints = !this.prefs.showHints;
+                this.applyHintsButton();
+                saveWheelPrefs(this.prefs);
+                // Re-apply to currently open modal, if any
+                if (!document.getElementById('wheelModal').hidden && this.selected) {
+                    this.applyHintsToModal();
+                }
+            };
+        }
+
         this.render();
+    }
+
+    applySize() {
+        let view = document.getElementById('wheelView');
+        if (view) view.style.setProperty('--wheel-scale', (this.prefs.size / 100).toString());
+        let valEl = document.getElementById('wheelSizeValue');
+        if (valEl) valEl.textContent = this.prefs.size + '%';
+    }
+
+    applyHintsButton() {
+        let btn = document.getElementById('wheelHintsBtn');
+        if (!btn) return;
+        btn.textContent = 'Hints: ' + (this.prefs.showHints ? 'ON' : 'OFF');
+        btn.classList.toggle('off', !this.prefs.showHints);
+    }
+
+    applyHintsToModal() {
+        let header = document.querySelector('#wheelModalBody .wheel-modal-answers-header');
+        let list = document.querySelector('#wheelModalBody .wheel-modal-answers');
+        if (header) header.classList.toggle('hidden', !this.prefs.showHints);
+        if (list) list.classList.toggle('hidden', !this.prefs.showHints);
     }
 
     render() {
@@ -66,6 +159,8 @@ class QuestionsWheel {
         btn.disabled = this.spinning || n === 0;
         if (n === 0) {
             btn.innerText = 'No questions to spin';
+        } else if (this.spinning) {
+            btn.innerText = 'Spinning…';
         } else {
             btn.innerText = 'SPIN THE WHEEL';
         }
@@ -164,9 +259,7 @@ class QuestionsWheel {
         txt.setAttribute('stroke', 'rgba(0,0,0,0.55)');
         txt.setAttribute('stroke-width', '2');
         txt.setAttribute('stroke-linejoin', 'round');
-        // Orient text along the radial direction so it reads from center outwards
         let rotation = midAngle;
-        // Flip text on left half so it doesn't appear upside down
         if (midAngle > 90 || midAngle < -90) {
             rotation = midAngle + 180;
         }
@@ -179,26 +272,30 @@ class QuestionsWheel {
     renderSidebar() {
         let list = document.getElementById('wheelQuestionList');
         list.innerHTML = '';
-        this.questions.forEach(q => {
-            let isHidden = this.hidden.has(q.id);
+        let q = this.searchQuery;
+        this.questions.forEach(question => {
+            let title = (question.question && question.question.title) || ('Question #' + question.id);
+            if (q && !title.toLowerCase().includes(q)) return;
+
+            let isHidden = this.hidden.has(question.id);
             let item = document.createElement('div');
             item.className = 'wheel-question-item' + (isHidden ? ' off' : '');
-            item.onclick = () => this.toggleQuestion(q.id);
+            item.onclick = () => this.toggleQuestion(question.id);
 
             let dot = document.createElement('span');
             dot.className = 'wheel-question-color';
-            dot.style.background = this.colorFor(q);
+            dot.style.background = this.colorFor(question);
 
-            let title = document.createElement('span');
-            title.className = 'wheel-question-title';
-            title.textContent = (q.question && q.question.title) || ('Question #' + q.id);
+            let titleEl = document.createElement('span');
+            titleEl.className = 'wheel-question-title';
+            titleEl.textContent = title;
 
             let toggle = document.createElement('span');
             toggle.className = 'wheel-question-toggle';
             toggle.textContent = isHidden ? '✕' : '✓';
 
             item.appendChild(dot);
-            item.appendChild(title);
+            item.appendChild(titleEl);
             item.appendChild(toggle);
             list.appendChild(item);
         });
@@ -227,7 +324,6 @@ class QuestionsWheel {
         let spinner = document.getElementById('wheelSpinner');
         spinner.style.transition = 'none';
         spinner.style.transform = 'rotate(0deg)';
-        // Force reflow so the next transition starts cleanly
         void spinner.offsetWidth;
     }
 
@@ -244,10 +340,6 @@ class QuestionsWheel {
         let pickedIdx = Math.floor(Math.random() * n);
         let picked = active[pickedIdx];
 
-        // Section pickedIdx midAngle (in SVG coords, 0 = right, +90 = down) is:
-        //   midAngle = pickedIdx * step - 90 + step/2
-        // The pointer is at the top, which is -90 degrees.
-        // We need (midAngle + rotation) ≡ -90 (mod 360)
         let midAngle = pickedIdx * step - 90 + step / 2;
         let randomOffset = (Math.random() - 0.5) * step * 0.7;
         let targetMod = -90 - midAngle + randomOffset;
@@ -257,17 +349,44 @@ class QuestionsWheel {
         let delta = targetNorm - currentMod;
         if (delta < 0) delta += 360;
         let fullSpins = 5;
-        this.rotation += delta + 360 * fullSpins;
+        let totalDelta = delta + 360 * fullSpins;
+        let startRotation = this.rotation;
+        let endRotation = startRotation + totalDelta;
+        this.rotation = endRotation;
 
         let spinner = document.getElementById('wheelSpinner');
-        spinner.style.transition = 'transform ' + WHEEL_SPIN_DURATION_MS + 'ms cubic-bezier(0.17, 0.67, 0.16, 0.99)';
-        spinner.style.transform = 'rotate(' + this.rotation + 'deg)';
+        spinner.style.transition = 'none';
 
-        setTimeout(() => {
-            this.spinning = false;
-            this.updateSpinButton();
-            this.showQuestionModal(picked);
-        }, WHEEL_SPIN_DURATION_MS + 50);
+        let startTime = performance.now();
+        let duration = WHEEL_SPIN_DURATION_MS;
+        let lastTickSection = 0;
+
+        // The pointer is at top (-90 in svg coords). Each time a section
+        // crosses the pointer, play a tick. A section crossing corresponds
+        // to the wheel having rotated by an additional `step` degrees.
+        let animate = (now) => {
+            let elapsed = now - startTime;
+            let t = Math.min(1, elapsed / duration);
+            let eased = easeOutQuint(t);
+            let currentRot = startRotation + totalDelta * eased;
+            spinner.style.transform = 'rotate(' + currentRot + 'deg)';
+
+            let passed = Math.floor((currentRot - startRotation) / step);
+            while (lastTickSection < passed) {
+                lastTickSection++;
+                playSound('wheel-tick');
+            }
+
+            if (t < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                this.spinning = false;
+                this.updateSpinButton();
+                playSound('wheel-land');
+                this.showQuestionModal(picked);
+            }
+        };
+        requestAnimationFrame(animate);
     }
 
     showQuestionModal(question) {
@@ -312,6 +431,8 @@ class QuestionsWheel {
                 list.appendChild(row);
             });
             body.appendChild(list);
+
+            this.applyHintsToModal();
         }
 
         modal.hidden = false;

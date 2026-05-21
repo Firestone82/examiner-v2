@@ -311,19 +311,21 @@ document.addEventListener('DOMContentLoaded', function() {
 // ── Sound system ──────────────────────────────────────────────────────────────
 
 const UI_SOUNDS   = ['select', 'dismiss', 'pause', 'show', 'navigate', 'next'];
-const EXAM_SOUNDS = ['correct', 'wrong', 'celebration'];
+const EXAM_SOUNDS = ['correct', 'wrong', 'celebration', 'wheel-tick', 'wheel-land'];
 const SOUND_NAMES = [...UI_SOUNDS, ...EXAM_SOUNDS];
 
 const SOUND_LABELS = {
-    select:      'Select / Deselect answer',
-    dismiss:     'Dismiss answer',
-    pause:       'Pause / resume',
-    show:        'Show answer',
-    navigate:    'Skip / Previous',
-    next:        'Next question',
-    correct:     'Correct answer',
-    wrong:       'Wrong answer',
-    celebration: 'Celebration music',
+    select:        'Select / Deselect answer',
+    dismiss:       'Dismiss answer',
+    pause:         'Pause / resume',
+    show:          'Show answer',
+    navigate:      'Skip / Previous',
+    next:          'Next question',
+    correct:       'Correct answer',
+    wrong:         'Wrong answer',
+    celebration:   'Celebration music',
+    'wheel-tick':  'Wheel tick',
+    'wheel-land':  'Wheel landed',
 };
 const SOUND_STORAGE_KEY = 'examiner_sounds';
 
@@ -428,6 +430,14 @@ function playSound(name) {
             case 'wrong':
                 _playTone(220, 'sawtooth', now,       0.12, 0.20 * v, ctx);
                 _playTone(180, 'sawtooth', now + 0.1, 0.18, 0.20 * v, ctx);
+                break;
+            case 'wheel-tick':
+                _playTone(1400, 'square', now, 0.025, 0.06 * v, ctx);
+                break;
+            case 'wheel-land':
+                _playTone(523.25, 'triangle', now,        0.18, 0.18 * v, ctx);
+                _playTone(659.25, 'triangle', now + 0.12, 0.18, 0.18 * v, ctx);
+                _playTone(783.99, 'triangle', now + 0.24, 0.30, 0.20 * v, ctx);
                 break;
             case 'end':
             case 'finish':

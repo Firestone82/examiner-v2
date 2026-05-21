@@ -1010,10 +1010,16 @@ p.answer.dismissed {
     gap: 1.5rem;
 }
 
+#wheelView {
+    --wheel-scale: 1;
+}
+
 .wheel-container {
     position: relative;
-    width: min(70vh, 90vw, 640px);
+    width: calc(min(80vh, 92vw, 900px) * var(--wheel-scale));
+    max-width: 92vw;
     aspect-ratio: 1 / 1;
+    transition: width 0.15s ease;
 }
 
 .wheel-pointer {
@@ -1158,22 +1164,122 @@ p.answer.dismissed {
     padding: 0.5rem 1rem 1rem;
 }
 
-.wheel-reset-btn {
+.wheel-reset-btn,
+.wheel-search-btn,
+.wheel-hints-btn {
     position: absolute;
-    right: 0.3rem;
     top: 50%;
     transform: translateY(-50%);
     background: none;
     border: none;
     cursor: pointer;
     color: #959595;
-    font-size: 1.2rem;
     padding: 0.1rem 0.4rem;
     line-height: 1;
 }
 
-.wheel-reset-btn:hover {
+.wheel-reset-btn {
+    right: 0.3rem;
+    font-size: 1.2rem;
+}
+
+.wheel-search-btn {
+    right: 2.2rem;
+}
+
+.wheel-hints-btn {
+    left: 0.5rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    padding: 0.15rem 0.5rem;
+    border: 1px solid #444;
+    border-radius: 3px;
+    transform: translateY(-50%);
+    text-transform: uppercase;
+}
+
+.wheel-hints-btn.off {
+    color: #666;
+    border-color: #333;
+}
+
+.wheel-reset-btn:hover,
+.wheel-search-btn:hover,
+.wheel-hints-btn:hover {
     color: white;
+}
+
+.wheel-search-bar {
+    background: #0e0e0e;
+    padding: 0.35rem 0.7rem;
+    display: flex;
+    align-items: center;
+}
+
+.wheel-search-bar input {
+    width: 100%;
+}
+
+.wheel-size-control {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    width: min(80vh, 92vw, 900px);
+    max-width: 92vw;
+    padding: 0.4rem 0.8rem;
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 4px;
+}
+
+.wheel-size-label {
+    color: #959595;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    flex-shrink: 0;
+}
+
+.wheel-size-control input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    background: #444;
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+
+.wheel-size-control input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #1e87f0;
+    cursor: pointer;
+}
+
+.wheel-size-control input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #1e87f0;
+    border: none;
+    cursor: pointer;
+}
+
+.wheel-size-value {
+    color: #ccc;
+    font-size: 0.8rem;
+    min-width: 3rem;
+    text-align: right;
+}
+
+.wheel-modal-answers-header.hidden,
+.wheel-modal-answers.hidden {
+    display: none !important;
 }
 
 /* ── Wheel modal ──────────────────────────────────────────────────────────── */
