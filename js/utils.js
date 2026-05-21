@@ -311,21 +311,23 @@ document.addEventListener('DOMContentLoaded', function() {
 // ── Sound system ──────────────────────────────────────────────────────────────
 
 const UI_SOUNDS   = ['select', 'dismiss', 'pause', 'show', 'navigate', 'next'];
-const EXAM_SOUNDS = ['correct', 'wrong', 'celebration', 'wheel-tick', 'wheel-land'];
+const EXAM_SOUNDS = ['correct', 'wrong', 'celebration', 'wheel-tick', 'wheel-land', 'wheel-shuffle', 'wheel-toggle'];
 const SOUND_NAMES = [...UI_SOUNDS, ...EXAM_SOUNDS];
 
 const SOUND_LABELS = {
-    select:        'Select / Deselect answer',
-    dismiss:       'Dismiss answer',
-    pause:         'Pause / resume',
-    show:          'Show answer',
-    navigate:      'Skip / Previous',
-    next:          'Next question',
-    correct:       'Correct answer',
-    wrong:         'Wrong answer',
-    celebration:   'Celebration music',
-    'wheel-tick':  'Wheel tick',
-    'wheel-land':  'Wheel landed',
+    select:           'Select / Deselect answer',
+    dismiss:          'Dismiss answer',
+    pause:            'Pause / resume',
+    show:             'Show answer',
+    navigate:         'Skip / Previous',
+    next:             'Next question',
+    correct:          'Correct answer',
+    wrong:            'Wrong answer',
+    celebration:      'Celebration music',
+    'wheel-tick':     'Wheel tick',
+    'wheel-land':     'Wheel landed',
+    'wheel-shuffle':  'Wheel shuffle',
+    'wheel-toggle':   'Show / hide question',
 };
 const SOUND_STORAGE_KEY = 'examiner_sounds';
 
@@ -439,6 +441,16 @@ function playSound(name) {
                 _playTone(659.25, 'triangle', now + 0.12, 0.18, 0.18 * v, ctx);
                 _playTone(783.99, 'triangle', now + 0.24, 0.30, 0.20 * v, ctx);
                 break;
+            case 'wheel-shuffle':
+                _playTone(900,  'square', now,        0.04, 0.06 * v, ctx);
+                _playTone(1100, 'square', now + 0.04, 0.04, 0.06 * v, ctx);
+                _playTone(800,  'square', now + 0.08, 0.04, 0.06 * v, ctx);
+                _playTone(1200, 'square', now + 0.12, 0.04, 0.06 * v, ctx);
+                _playTone(950,  'square', now + 0.16, 0.05, 0.06 * v, ctx);
+                break;
+            case 'wheel-toggle':
+                _playTone(620, 'sine', now, 0.04, 0.08 * v, ctx);
+                break;
             case 'end':
             case 'finish':
                 // ── Section 1: Fanfare run (0.00–0.60s) ──────────────────
@@ -505,6 +517,8 @@ function toggleSound(event) {
     if (!panel) return;
     let willOpen = panel.hidden;
     document.querySelectorAll('.sound-panel').forEach(p => { if (p !== panel) p.hidden = true; });
+    let cfg = document.getElementById('wheelConfigPanel');
+    if (cfg) cfg.hidden = true;
     panel.hidden = !willOpen;
     if (willOpen) _buildSoundPanels();
 }

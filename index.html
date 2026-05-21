@@ -160,6 +160,31 @@
                     <button class="exit-button uk-button uk-button-danger" type="button"
                         onclick="window.location.reload();"><a class="uk-link-reset" uk-icon="icon: sign-out; ratio: 1.1;"></a></button>
                     <span id="wheel-dlc-name">Questions Wheel</span>
+                    <button class="wheel-config-btn" id="wheelConfigButton" onclick="toggleWheelConfig(event)" title="Wheel configuration">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    </button>
+                    <div id="wheelConfigPanel" class="wheel-config-panel" hidden>
+                        <div class="wheel-config-row">
+                            <span class="wheel-config-label">Wheel size</span>
+                            <input type="range" id="wheelSizeSlider" min="60" max="200" step="5" value="100">
+                            <span class="wheel-config-value" id="wheelSizeValue">100%</span>
+                        </div>
+                        <div class="wheel-config-row">
+                            <span class="wheel-config-label">Text size</span>
+                            <input type="range" id="wheelTextSizeSlider" min="50" max="200" step="5" value="100">
+                            <span class="wheel-config-value" id="wheelTextSizeValue">100%</span>
+                        </div>
+                        <div class="wheel-config-row">
+                            <span class="wheel-config-label">Spin time</span>
+                            <input type="range" id="wheelSpinTimeSlider" min="1000" max="10000" step="250" value="4500">
+                            <span class="wheel-config-value" id="wheelSpinTimeValue">4.5s</span>
+                        </div>
+                        <div class="wheel-config-divider"></div>
+                        <label class="wheel-config-row wheel-config-toggle-row" id="wheelHintsRow">
+                            <span class="wheel-config-label">Show hints</span>
+                            <span class="sound-switch" id="wheelHintsSwitch"></span>
+                        </label>
+                    </div>
                     <button class="sound-toggle-btn wheel-sound-btn" id="wheelSoundButton" data-panel="wheelSoundPanel" onclick="toggleSound(event)" title="Sounds"></button>
                     <div id="wheelSoundPanel" class="sound-panel" hidden></div>
                 </div>
@@ -171,24 +196,15 @@
                         </div>
                         <div class="wheel-hub" id="wheelHub">SPIN</div>
                     </div>
-                    <div class="wheel-action-row">
-                        <button id="spinButton" class="uk-button uk-button-primary wheel-spin-btn" type="button">SPIN THE WHEEL</button>
-                        <button id="wheelShuffleBtn" class="uk-button uk-button-default wheel-shuffle-btn" type="button" title="Randomize section order">Shuffle</button>
-                    </div>
-                    <div class="wheel-size-control">
-                        <span class="wheel-size-label">Wheel size</span>
-                        <input type="range" id="wheelSizeSlider" min="60" max="200" step="5" value="100">
-                        <span class="wheel-size-value" id="wheelSizeValue">100%</span>
-                    </div>
+                    <button id="spinButton" class="uk-button uk-button-primary wheel-spin-btn" type="button">SPIN THE WHEEL</button>
                 </div>
             </div>
 
             <div class="uk-width-1-4@l uk-width-1-5@xl">
                 <div class="sidebar">
                     <span class="section-title darker">Questions
-                        <button class="wheel-hints-btn" id="wheelHintsBtn" title="Show / hide answer hints in modal">Hints: ON</button>
                         <button class="wheel-search-btn" id="wheelSearchBtn" title="Search questions"><span uk-icon="search"></span></button>
-                        <button class="wheel-reset-btn" id="wheelResetBtn" title="Show all questions">⟳</button>
+                        <button class="wheel-shuffle-header-btn" id="wheelShuffleBtn" title="Randomize section order">⇄</button>
                     </span>
                     <div class="wheel-search-bar" id="wheelSearchBar" hidden>
                         <input type="text" id="wheelQuestionSearch" class="question-search-input" placeholder="Search...">
@@ -210,6 +226,7 @@
             <div id="wheelModalColorBar"></div>
             <div id="wheelModalBody"></div>
             <div id="wheelModalButtons">
+                <button id="wheelModalShowHint" class="uk-button uk-button-default" type="button" hidden>Show hint</button>
                 <button id="wheelModalClose" class="uk-button uk-button-default" type="button">Close question</button>
                 <button id="wheelModalHide" class="uk-button uk-button-danger" type="button">Hide question</button>
             </div>
@@ -227,7 +244,7 @@
     <script src="js/utils.js?v=6"></script>
     <script src="js/examiner.js?v=6"></script>
     <script src="js/interpret.js?v=6"></script>
-    <script src="js/wheel.js?v=3"></script>
+    <script src="js/wheel.js?v=4"></script>
     <script src="js/index.js?v=6"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/uikit/3.5.9/js/uikit.min.js"

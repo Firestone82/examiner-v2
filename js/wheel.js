@@ -3,9 +3,15 @@
 // shows a modal with the picked question's full content.
 
 const WHEEL_SVG_NS = 'http://www.w3.org/2000/svg';
-const WHEEL_SPIN_DURATION_MS = 4500;
 const WHEEL_DEFAULT_COLOR = '#888888';
 const WHEEL_PREFS_KEY = 'examiner_wheel_prefs';
+
+const WHEEL_DEFAULT_PREFS = {
+    size: 100,
+    textScale: 100,
+    spinTimeMs: 4500,
+    showHints: true,
+};
 
 let wheelInstance = null;
 
@@ -14,12 +20,14 @@ function loadWheelPrefs() {
         let p = JSON.parse(localStorage.getItem(WHEEL_PREFS_KEY));
         if (p && typeof p === 'object') {
             return {
-                size: typeof p.size === 'number' ? p.size : 100,
-                showHints: p.showHints !== false,
+                size:       typeof p.size === 'number' ? p.size : WHEEL_DEFAULT_PREFS.size,
+                textScale:  typeof p.textScale === 'number' ? p.textScale : WHEEL_DEFAULT_PREFS.textScale,
+                spinTimeMs: typeof p.spinTimeMs === 'number' ? p.spinTimeMs : WHEEL_DEFAULT_PREFS.spinTimeMs,
+                showHints:  p.showHints !== false,
             };
         }
     } catch {}
-    return { size: 100, showHints: true };
+    return Object.assign({}, WHEEL_DEFAULT_PREFS);
 }
 
 function saveWheelPrefs(prefs) {
@@ -39,6 +47,16 @@ function startWheel(dlc) {
     wheelInstance.attach();
 }
 
+function toggleWheelConfig(event) {
+    if (event) event.stopPropagation();
+    let panel = document.getElementById('wheelConfigPanel');
+    if (!panel) return;
+    let willOpen = panel.hidden;
+    // Close sound panels too so they don't stack
+    document.querySelectorAll('.sound-panel').forEach(p => p.hidden = true);
+    panel.hidden = !willOpen;
+}
+
 function easeOutQuint(t) {
     return 1 - Math.pow(1 - t, 5);
 }
@@ -52,6 +70,7 @@ class QuestionsWheel {
         this.selected = null;
         this.searchQuery = '';
         this.prefs = loadWheelPrefs();
+        this.hintRevealed = false;
     }
 
     get active() {
@@ -60,7 +79,7 @@ class QuestionsWheel {
 
     attach() {
         this.applySize();
-        this.applyHintsButton();
+        this.applyTextScale();
 
         let spinBtn = document.getElementById('spinButton');
         spinBtn.onclick = () => this.spin();
@@ -69,25 +88,79 @@ class QuestionsWheel {
 
         document.getElementById('wheelModalClose').onclick = () => this.closeModal();
         document.getElementById('wheelModalHide').onclick = () => this.hideSelected();
+        document.getElementById('wheelModalShowHint').onclick = () => this.toggleHintReveal();
 
         let modal = document.getElementById('wheelModal');
         modal.addEventListener('click', (e) => {
             if (e.target === modal) this.closeModal();
         });
 
-        let resetBtn = document.getElementById('wheelResetBtn');
-        if (resetBtn) resetBtn.onclick = () => this.resetHidden();
-
+        // ── Config panel ─────────────────────────────────────────────────────
         let sizeSlider = document.getElementById('wheelSizeSlider');
         if (sizeSlider) {
             sizeSlider.value = this.prefs.size;
+            this.updateSizeLabel();
             sizeSlider.oninput = (e) => {
                 this.prefs.size = parseInt(e.target.value, 10);
                 this.applySize();
+                this.updateSizeLabel();
                 saveWheelPrefs(this.prefs);
             };
         }
 
+        let textSlider = document.getElementById('wheelTextSizeSlider');
+        if (textSlider) {
+            textSlider.value = this.prefs.textScale;
+            this.updateTextLabel();
+            textSlider.oninput = (e) => {
+                this.prefs.textScale = parseInt(e.target.value, 10);
+                this.applyTextScale();
+                this.updateTextLabel();
+                this.renderWheel();
+                saveWheelPrefs(this.prefs);
+            };
+        }
+
+        let spinSlider = document.getElementById('wheelSpinTimeSlider');
+        if (spinSlider) {
+            spinSlider.value = this.prefs.spinTimeMs;
+            this.updateSpinTimeLabel();
+            spinSlider.oninput = (e) => {
+                this.prefs.spinTimeMs = parseInt(e.target.value, 10);
+                this.updateSpinTimeLabel();
+                saveWheelPrefs(this.prefs);
+            };
+        }
+
+        let hintsSwitch = document.getElementById('wheelHintsSwitch');
+        let hintsRow = document.getElementById('wheelHintsRow');
+        let updateSwitch = () => hintsSwitch.classList.toggle('on', this.prefs.showHints);
+        updateSwitch();
+        if (hintsRow) {
+            hintsRow.onclick = (e) => {
+                e.preventDefault();
+                this.prefs.showHints = !this.prefs.showHints;
+                updateSwitch();
+                saveWheelPrefs(this.prefs);
+                // Re-apply to currently open modal, if any
+                if (!document.getElementById('wheelModal').hidden && this.selected) {
+                    this.applyHintsButton();
+                }
+            };
+        }
+
+        // Close config panel on outside click
+        let configPanel = document.getElementById('wheelConfigPanel');
+        let configBtn = document.getElementById('wheelConfigButton');
+        if (configPanel) configPanel.addEventListener('click', (e) => e.stopPropagation());
+        document.addEventListener('click', (e) => {
+            if (!configPanel || configPanel.hidden) return;
+            if (configBtn && configBtn.contains(e.target)) return;
+            if (configPanel.contains(e.target)) return;
+            configPanel.hidden = true;
+        });
+
+        // ── Sidebar controls ─────────────────────────────────────────────────
         let searchBtn = document.getElementById('wheelSearchBtn');
         let searchBar = document.getElementById('wheelSearchBar');
         let searchInput = document.getElementById('wheelQuestionSearch');
@@ -110,19 +183,6 @@ class QuestionsWheel {
             };
         }
 
-        let hintsBtn = document.getElementById('wheelHintsBtn');
-        if (hintsBtn) {
-            hintsBtn.onclick = () => {
-                this.prefs.showHints = !this.prefs.showHints;
-                this.applyHintsButton();
-                saveWheelPrefs(this.prefs);
-                // Re-apply to currently open modal, if any
-                if (!document.getElementById('wheelModal').hidden && this.selected) {
-                    this.applyHintsToModal();
-                }
-            };
-        }
-
         let shuffleBtn = document.getElementById('wheelShuffleBtn');
         if (shuffleBtn) {
             shuffleBtn.onclick = () => this.shuffleQuestions();
@@ -136,27 +196,31 @@ class QuestionsWheel {
         shuffle(this.questions);
         this.resetSpinner();
         this.render();
+        playSound('wheel-shuffle');
     }
 
     applySize() {
         let view = document.getElementById('wheelView');
         if (view) view.style.setProperty('--wheel-scale', (this.prefs.size / 100).toString());
-        let valEl = document.getElementById('wheelSizeValue');
-        if (valEl) valEl.textContent = this.prefs.size + '%';
     }
 
-    applyHintsButton() {
-        let btn = document.getElementById('wheelHintsBtn');
-        if (!btn) return;
-        btn.textContent = 'Hints: ' + (this.prefs.showHints ? 'ON' : 'OFF');
-        btn.classList.toggle('off', !this.prefs.showHints);
+    applyTextScale() {
+        // text scale is read directly by renderWheel via this.prefs.textScale
     }
 
-    applyHintsToModal() {
-        let header = document.querySelector('#wheelModalBody .wheel-modal-answers-header');
-        let list = document.querySelector('#wheelModalBody .wheel-modal-answers');
-        if (header) header.classList.toggle('hidden', !this.prefs.showHints);
-        if (list) list.classList.toggle('hidden', !this.prefs.showHints);
+    updateSizeLabel() {
+        let el = document.getElementById('wheelSizeValue');
+        if (el) el.textContent = this.prefs.size + '%';
+    }
+
+    updateTextLabel() {
+        let el = document.getElementById('wheelTextSizeValue');
+        if (el) el.textContent = this.prefs.textScale + '%';
+    }
+
+    updateSpinTimeLabel() {
+        let el = document.getElementById('wheelSpinTimeValue');
+        if (el) el.textContent = (this.prefs.spinTimeMs / 1000).toFixed(2).replace(/\.?0+$/, '') + 's';
     }
 
     render() {
@@ -252,7 +316,10 @@ class QuestionsWheel {
 
     appendSectorText(svg, q, cx, cy, radius, midAngle, step) {
         let title = (q.question && q.question.title) || ('Question #' + q.id);
-        let maxChars = step >= 60 ? 30 : step >= 36 ? 24 : step >= 24 ? 18 : step >= 18 ? 14 : step >= 12 ? 10 : 8;
+        let textScale = this.prefs.textScale / 100;
+        // More text fits when sectors are wider and/or text is smaller
+        let baseMax = step >= 60 ? 30 : step >= 36 ? 24 : step >= 24 ? 18 : step >= 18 ? 14 : step >= 12 ? 10 : 8;
+        let maxChars = Math.max(4, Math.round(baseMax / textScale));
         let shown = title.length > maxChars ? title.substring(0, maxChars - 1) + '…' : title;
 
         let textRadius = radius * 0.66;
@@ -265,11 +332,12 @@ class QuestionsWheel {
         txt.setAttribute('dominant-baseline', 'middle');
         txt.setAttribute('fill', '#ffffff');
         txt.setAttribute('font-weight', 'bold');
-        let fontSize = Math.max(12, Math.min(24, step * 0.55));
+        let baseFontSize = Math.max(12, Math.min(24, step * 0.55));
+        let fontSize = baseFontSize * textScale;
         txt.setAttribute('font-size', fontSize);
         txt.setAttribute('paint-order', 'stroke');
         txt.setAttribute('stroke', 'rgba(0,0,0,0.55)');
-        txt.setAttribute('stroke-width', '2');
+        txt.setAttribute('stroke-width', Math.max(1.2, 2 * textScale));
         txt.setAttribute('stroke-linejoin', 'round');
         let rotation = midAngle;
         if (midAngle > 90 || midAngle < -90) {
@@ -322,13 +390,7 @@ class QuestionsWheel {
         }
         this.resetSpinner();
         this.render();
-    }
-
-    resetHidden() {
-        if (this.spinning) return;
-        this.hidden.clear();
-        this.resetSpinner();
-        this.render();
+        playSound('wheel-toggle');
     }
 
     resetSpinner() {
@@ -370,12 +432,9 @@ class QuestionsWheel {
         spinner.style.transition = 'none';
 
         let startTime = performance.now();
-        let duration = WHEEL_SPIN_DURATION_MS;
+        let duration = this.prefs.spinTimeMs;
         let lastTickSection = 0;
 
-        // The pointer is at top (-90 in svg coords). Each time a section
-        // crosses the pointer, play a tick. A section crossing corresponds
-        // to the wheel having rotated by an additional `step` degrees.
         let animate = (now) => {
             let elapsed = now - startTime;
             let t = Math.min(1, elapsed / duration);
@@ -403,6 +462,8 @@ class QuestionsWheel {
 
     showQuestionModal(question) {
         this.selected = question;
+        this.hintRevealed = false;
+
         let modal = document.getElementById('wheelModal');
         let body = document.getElementById('wheelModalBody');
         let colorBar = document.getElementById('wheelModalColorBar');
@@ -450,16 +511,54 @@ class QuestionsWheel {
                 list.appendChild(row);
             });
             body.appendChild(list);
-
-            this.applyHintsToModal();
         }
 
+        this.applyHintsButton();
         modal.hidden = false;
+    }
+
+    applyHintsButton() {
+        // Hints are hidden by default and only revealed on demand.
+        // The "Show hint" button is only visible if hints are enabled in
+        // prefs and the current question has any.
+        let hasHints = this.selected
+            && Array.isArray(this.selected.answers)
+            && this.selected.answers.length > 0;
+
+        let btn = document.getElementById('wheelModalShowHint');
+        let header = document.querySelector('#wheelModalBody .wheel-modal-answers-header');
+        let list = document.querySelector('#wheelModalBody .wheel-modal-answers');
+
+        let canShow = hasHints && this.prefs.showHints;
+        btn.hidden = !canShow;
+        if (!canShow) {
+            // Hide hint elements entirely
+            if (header) header.style.display = 'none';
+            if (list) list.style.display = 'none';
+            return;
+        }
+
+        if (this.hintRevealed) {
+            btn.textContent = 'Hide hint';
+            if (header) header.style.display = '';
+            if (list) list.style.display = '';
+        } else {
+            btn.textContent = 'Show hint';
+            if (header) header.style.display = 'none';
+            if (list) list.style.display = 'none';
+        }
+    }
+
+    toggleHintReveal() {
+        if (!this.prefs.showHints) return;
+        this.hintRevealed = !this.hintRevealed;
+        this.applyHintsButton();
     }
 
     closeModal() {
         document.getElementById('wheelModal').hidden = true;
         this.selected = null;
+        this.hintRevealed = false;
     }
 
     hideSelected() {
