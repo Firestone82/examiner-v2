@@ -346,13 +346,23 @@ class QuestionsWheel {
     appendSectorText(svg, q, cx, cy, radius, midAngle, step) {
         let title = (q.question && q.question.title) || ('Question #' + q.id);
         let textScale = this.prefs.textScale / 100;
-        // More text fits when sectors are wider and/or text is smaller
-        let baseMax = step >= 60 ? 30 : step >= 36 ? 24 : step >= 24 ? 18 : step >= 18 ? 14 : step >= 12 ? 10 : 8;
-        let maxChars = Math.max(4, Math.round(baseMax / textScale));
-        let shown = title.length > maxChars ? title.substring(0, maxChars - 1) + '…' : title;
 
-        let textRadius = radius * 0.66;
+        // Radial bounds — leave the hub clear and a small margin at the outer rim.
+        let innerR = radius * 0.18;
+        let outerR = radius * 0.96;
+        let availLen = outerR - innerR;
+        // Position text at the radial midpoint of the available band, so it can
+        // extend equally in both directions toward the rim and the hub.
+        let textRadius = (innerR + outerR) / 2;
         let pos = polarToCartesian(cx, cy, textRadius, midAngle);
+
+        // Maximum readable font height for this sector — the text is laid out
+        // radially, so its "height" after rotation is bounded by the angular
+        // width of the sector at textRadius. The 0.78 factor leaves a tiny gap
+        // between neighbouring labels.
+        let angularLimit = textRadius * (step * Math.PI / 180) * 0.78;
+        let baseFontSize = Math.min(angularLimit, 22);
+        let fontSize = Math.max(6, baseFontSize * textScale);
 
         let txt = document.createElementNS(WHEEL_SVG_NS, 'text');
         txt.setAttribute('x', pos.x);
@@ -361,21 +371,32 @@ class QuestionsWheel {
         txt.setAttribute('dominant-baseline', 'middle');
         txt.setAttribute('fill', '#ffffff');
         txt.setAttribute('font-weight', 'bold');
-        let baseFontSize = Math.max(12, Math.min(24, step * 0.55));
-        let fontSize = baseFontSize * textScale;
         txt.setAttribute('font-size', fontSize);
         txt.setAttribute('paint-order', 'stroke');
         txt.setAttribute('stroke', 'rgba(0,0,0,0.55)');
-        txt.setAttribute('stroke-width', Math.max(1.2, 2 * textScale));
+        txt.setAttribute('stroke-width', Math.max(1, fontSize * 0.1));
         txt.setAttribute('stroke-linejoin', 'round');
+
         let rotation = midAngle;
         if (midAngle > 90 || midAngle < -90) {
             rotation = midAngle + 180;
         }
         txt.setAttribute('transform', 'rotate(' + rotation + ' ' + pos.x + ' ' + pos.y + ')');
         txt.style.pointerEvents = 'none';
-        txt.textContent = shown;
+        txt.textContent = title;
         svg.appendChild(txt);
+
+        // Squeeze the full title into the available radial space rather than
+        // truncating it. textLength + lengthAdjust scales glyph widths and
+        // letter spacing so the whole word fits — but only when the natural
+        // width actually exceeds the budget (short titles stay un-stretched).
+        try {
+            let bbox = txt.getBBox();
+            if (bbox.width > availLen && bbox.width > 0) {
+                txt.setAttribute('textLength', availLen);
+                txt.setAttribute('lengthAdjust', 'spacingAndGlyphs');
+            }
+        } catch (e) {}
     }
 
     renderSidebar() {
