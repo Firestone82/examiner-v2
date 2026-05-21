@@ -1488,7 +1488,7 @@ p.answer.dismissed {
     color: #8d8d8d;
     font-size: 0.78rem;
     font-weight: normal;
-    text-align: center;
+    text-align: left;
     margin-bottom: 0.5rem;
     text-transform: uppercase;
     letter-spacing: 0.12em;
@@ -1567,32 +1567,11 @@ p.answer.dismissed {
     }
 }
 
-/* ── Wheel timer / config action / groups ────────────────────────────────── */
+/* ── Wheel timer / sidebar groups ─────────────────────────────────────────── */
 
 .wheel-timer {
     font-size: 2.4rem;
     padding: 0.3rem 0;
-}
-
-.wheel-config-action-row {
-    justify-content: space-between;
-}
-
-.wheel-config-action-btn {
-    background: #242424;
-    border: 1px solid #3a3a3a;
-    color: #ccc;
-    padding: 0.25rem 0.7rem;
-    font-size: 0.78rem;
-    border-radius: 3px;
-    cursor: pointer;
-    transition: background 0.12s, border-color 0.12s, color 0.12s;
-}
-
-.wheel-config-action-btn:hover {
-    background: #2e2e2e;
-    border-color: #1e87f0;
-    color: white;
 }
 
 /* Sidebar group header */
@@ -1612,173 +1591,29 @@ p.answer.dismissed {
     margin-top: 0;
 }
 
-/* Clickable color dot opens group picker */
-.wheel-question-color {
-    cursor: pointer;
+/* ── Wheel view: left-aligned section / config titles ─────────────────────── */
+
+#wheelView .section-title {
+    text-align: left;
+    padding-left: 1rem;
 }
 
-.wheel-question-color:hover {
-    box-shadow: 0 0 0 2px rgba(255,255,255,0.25);
+/* Top DLC name shares the row with the absolutely-positioned exit button. */
+#wheelView .section-title:has(.exit-button) {
+    padding-left: 4.5rem;
 }
 
-/* Group picker popover */
-.wheel-group-picker {
-    position: fixed;
-    background: #1a1a1a;
-    border: 1px solid #333;
-    border-radius: 4px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.6);
-    z-index: 1100;
-    min-width: 180px;
-    padding: 0.25rem 0;
+/* Questions header shares the row with the "show all" toggle. */
+#wheelView .section-title:has(.wheel-showall-btn) {
+    padding-left: 2.4rem;
 }
 
-.wheel-group-picker-item {
-    display: flex;
-    align-items: center;
-    gap: 0.55rem;
-    padding: 0.4rem 0.7rem;
-    color: #ccc;
-    font-size: 0.83rem;
-    cursor: pointer;
-    user-select: none;
+#wheelView .wheel-timer {
+    text-align: left;
+    padding-left: 1rem;
 }
 
-.wheel-group-picker-item:hover {
-    background: #242424;
-}
-
-.wheel-group-picker-item.selected {
-    background: #1f3147;
-    color: white;
-}
-
-.wheel-group-picker-item.wheel-group-picker-manage {
-    color: #1e87f0;
-    font-size: 0.78rem;
-}
-
-.wheel-group-picker-divider {
-    height: 1px;
-    background: #2e2e2e;
-    margin: 0.2rem 0;
-}
-
-/* Groups manager modal */
-#wheelGroupsModal {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 0, 0, 0.72);
-    z-index: 1050;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-}
-
-#wheelGroupsModal[hidden] { display: none; }
-
-#wheelGroupsModalContent {
-    background: #1a1a1a;
-    border: 1px solid #333;
-    border-radius: 8px;
-    width: 100%;
-    max-width: 520px;
-    max-height: 80vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-
-.wheel-groups-modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.8rem 1.2rem;
-    border-bottom: 1px solid #2a2a2a;
-}
-
-.wheel-groups-modal-title {
-    color: white;
-    font-size: 1rem;
-    font-weight: bold;
-}
-
-#wheelGroupsModalClose {
-    background: none;
-    border: none;
-    color: #666;
-    font-size: 1.4rem;
-    cursor: pointer;
-    line-height: 1;
-    padding: 0 0.3rem;
-}
-
-#wheelGroupsModalClose:hover { color: #f44336; }
-
-#wheelGroupsManagerBody {
-    padding: 0.8rem 1.2rem;
-    overflow-y: auto;
-    flex: 1;
-}
-
-.wheel-groups-empty {
-    color: #777;
-    font-size: 0.85rem;
-    padding: 1rem 0;
-    text-align: center;
-}
-
-.wheel-groups-row {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    padding: 0.45rem 0;
-}
-
-.wheel-groups-color {
-    width: 2rem;
-    height: 1.8rem;
-    border: 1px solid #333;
-    background: transparent;
-    cursor: pointer;
-    border-radius: 3px;
-    padding: 0;
-    flex-shrink: 0;
-}
-
-.wheel-groups-name {
-    flex: 1;
-    background: #0e0e0e;
-    border: 1px solid #2a2a2a;
-    color: white;
-    font-size: 0.88rem;
-    padding: 0.35rem 0.6rem;
-    border-radius: 3px;
-    outline: none;
-}
-
-.wheel-groups-name:focus {
-    border-color: #1e87f0;
-}
-
-.wheel-groups-delete {
-    background: none;
-    border: none;
-    color: #666;
-    font-size: 1rem;
-    cursor: pointer;
-    line-height: 1;
-    padding: 0 0.4rem;
-    transition: color 0.12s;
-}
-
-.wheel-groups-delete:hover { color: #f44336; }
-
-.wheel-groups-modal-footer {
-    padding: 0.7rem 1.2rem;
-    border-top: 1px solid #2a2a2a;
-    background: #161616;
-    text-align: right;
+.wheel-config-label {
+    text-align: left;
 }
 
