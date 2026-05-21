@@ -868,12 +868,11 @@ class QuestionsWheel {
 
         let startTime = performance.now();
         let duration = this.prefs.spinTimeMs;
-        // Tick once per section when the pool is small; for larger pools,
-        // space ticks by degrees so the rate stays uniform (≈40 ticks total)
-        // regardless of how many sections we pass.
-        let MAX_TICKS = 40;
-        let tickDeg = Math.max(step, totalDelta / MAX_TICKS);
-        let lastTickStep = 0;
+        // One tick per section passed. Scale volume by per-section speed: at
+        // the start (fast) most ticks are quiet so it doesn't machine-gun,
+        // by the time the wheel is crawling each section gets a full tick.
+        let lastTickSection = 0;
+        let lastTickTime = startTime;
 
         let animate = (now) => {
             let elapsed = now - startTime;
@@ -882,10 +881,15 @@ class QuestionsWheel {
             let currentRot = startRotation + totalDelta * eased;
             spinner.style.transform = 'rotate(' + currentRot + 'deg)';
 
-            let passed = Math.floor((currentRot - startRotation) / tickDeg);
-            if (passed > lastTickStep) {
-                lastTickStep = passed;
-                playSound('wheel-tick');
+            let passed = Math.floor((currentRot - startRotation) / step);
+            while (lastTickSection < passed) {
+                lastTickSection++;
+                let dt = now - lastTickTime;
+                lastTickTime = now;
+                // dt < ~30ms feels like a buzz; ramp volume from 0.15 at
+                // 20ms+ between ticks up to 1.0 at 100ms+.
+                let vol = Math.max(0.15, Math.min(1, (dt - 20) / 80));
+                playSound('wheel-tick', vol);
             }
 
             if (t < 1) {

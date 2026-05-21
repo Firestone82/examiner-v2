@@ -385,7 +385,7 @@ function _playTone(frequency, type, startTime, duration, gainValue, ctx) {
     osc.stop(startTime + duration);
 }
 
-function playSound(name) {
+function playSound(name, volumeMul = 1) {
     if (_soundSettings.muted) return;
     if (UI_SOUNDS.includes(name) && !_soundSettings.groups.ui) return;
     let settingsKey = name;
@@ -396,7 +396,7 @@ function playSound(name) {
     try {
         let ctx = _getAudioCtx();
         let now = ctx.currentTime;
-        let v = _soundSettings.volume;
+        let v = _soundSettings.volume * volumeMul;
         switch (name) {
             case 'select':
                 _playTone(600, 'sine', now, 0.05, 0.10 * v, ctx);
