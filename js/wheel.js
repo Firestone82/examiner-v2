@@ -416,15 +416,19 @@ class QuestionsWheel {
         if (outerR < innerR + 10) outerR = innerR + 10; // degenerate safety
         let availLen = outerR - innerR;
 
-        // Flip decision: in dynamic mode the absolute screen-space angle
-        // (sector angle + current wheel rotation) drives the flip so labels
-        // stay right-side up after a spin. Otherwise use the static SVG angle.
-        let effAngle = midAngle;
+        // Flip decision.
+        // Auto-rotate OFF: always flip so every label consistently reads
+        // outer → inner in the sector's local frame (no conditional on angle).
+        // Auto-rotate ON: flip based on absolute screen-space angle so labels
+        // stay upright after a spin.
+        let flipped;
         if (dynamic) {
-            effAngle = midAngle + (this.rotation || 0);
+            let effAngle = midAngle + (this.rotation || 0);
             effAngle = ((effAngle + 180) % 360 + 360) % 360 - 180;
+            flipped = effAngle > 90 || effAngle < -90;
+        } else {
+            flipped = true;
         }
-        let flipped = effAngle > 90 || effAngle < -90;
 
         // Position: centered (midpoint of the radial range) or anchored at
         // the outer rim with the text extending inward.
