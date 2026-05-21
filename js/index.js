@@ -1,5 +1,5 @@
-const supportedVersions =  ["1.3"];
-const supportedQuestionTypes = ["self-assessment", "question-with-answers", "text", "image"];
+const supportedVersions =  ["1.3", "1.4"];
+const supportedQuestionTypes = ["self-assessment", "question-with-answers"];
 
 console.log("Currently supported DLC versions: " + supportedVersions);
 console.log("Currently supported question types: " + supportedQuestionTypes);

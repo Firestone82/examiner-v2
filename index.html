@@ -171,8 +171,8 @@
                         </div>
                         <div class="wheel-config-row">
                             <span class="wheel-config-label">Text size</span>
-                            <input type="range" id="wheelTextSizeSlider" min="50" max="200" step="5" value="100">
-                            <span class="wheel-config-value" id="wheelTextSizeValue">100%</span>
+                            <input type="range" id="wheelTextSizeSlider" min="20" max="400" step="5" value="75">
+                            <span class="wheel-config-value" id="wheelTextSizeValue">75%</span>
                         </div>
                         <div class="wheel-config-row">
                             <span class="wheel-config-label">Spin time</span>
@@ -203,8 +203,9 @@
             <div class="uk-width-1-4@l uk-width-1-5@xl">
                 <div class="sidebar">
                     <span class="section-title darker">Questions
+                        <button class="wheel-showall-btn" id="wheelShowAllBtn" title="Show all hidden questions">⟳</button>
                         <button class="wheel-search-btn" id="wheelSearchBtn" title="Search questions"><span uk-icon="search"></span></button>
-                        <button class="wheel-shuffle-header-btn" id="wheelShuffleBtn" title="Randomize section order">⇄</button>
+                        <button class="wheel-shuffle-header-btn" id="wheelShuffleBtn" title="Randomize wheel section order">⇄</button>
                     </span>
                     <div class="wheel-search-bar" id="wheelSearchBar" hidden>
                         <input type="text" id="wheelQuestionSearch" class="question-search-input" placeholder="Search...">
@@ -244,7 +245,7 @@
     <script src="js/utils.js?v=6"></script>
     <script src="js/examiner.js?v=6"></script>
     <script src="js/interpret.js?v=6"></script>
-    <script src="js/wheel.js?v=4"></script>
+    <script src="js/wheel.js?v=5"></script>
     <script src="js/index.js?v=6"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/uikit/3.5.9/js/uikit.min.js"

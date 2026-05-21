@@ -31,7 +31,7 @@ def main():
 
     result = {}
     result['filetype'] = 'examiner-dlc'
-    result['version'] = '1.3'
+    result['version'] = '1.4'
     result['name'] = os.path.splitext(sys.argv[1])[0]
     result['data'] = []
 

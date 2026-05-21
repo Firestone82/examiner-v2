@@ -1165,7 +1165,8 @@ p.answer.dismissed {
 }
 
 .wheel-search-btn,
-.wheel-shuffle-header-btn {
+.wheel-shuffle-header-btn,
+.wheel-showall-btn {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
@@ -1186,8 +1187,14 @@ p.answer.dismissed {
     font-size: 1.2rem;
 }
 
+.wheel-showall-btn {
+    left: 0.4rem;
+    font-size: 1.2rem;
+}
+
 .wheel-search-btn:hover,
-.wheel-shuffle-header-btn:hover {
+.wheel-shuffle-header-btn:hover,
+.wheel-showall-btn:hover {
     color: white;
 }
 

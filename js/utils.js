@@ -311,8 +311,14 @@ document.addEventListener('DOMContentLoaded', function() {
 // ── Sound system ──────────────────────────────────────────────────────────────
 
 const UI_SOUNDS   = ['select', 'dismiss', 'pause', 'show', 'navigate', 'next'];
-const EXAM_SOUNDS = ['correct', 'wrong', 'celebration', 'wheel-tick', 'wheel-land', 'wheel-shuffle', 'wheel-toggle'];
+const EXAM_SOUNDS = ['correct', 'wrong', 'celebration', 'wheel-tick', 'wheel-land', 'wheel-shuffle'];
 const SOUND_NAMES = [...UI_SOUNDS, ...EXAM_SOUNDS];
+
+// Sounds actually used in each mode — used to hide irrelevant options in
+// the sound configuration panel (the wheel panel only shows wheel-related
+// items, and vice versa).
+const WHEEL_USED_UI_SOUNDS = new Set(['select', 'show', 'navigate', 'next']);
+const WHEEL_USED_EXAM_SOUNDS = new Set(['wheel-tick', 'wheel-land', 'wheel-shuffle']);
 
 const SOUND_LABELS = {
     select:           'Select / Deselect answer',
@@ -327,7 +333,6 @@ const SOUND_LABELS = {
     'wheel-tick':     'Wheel tick',
     'wheel-land':     'Wheel landed',
     'wheel-shuffle':  'Wheel shuffle',
-    'wheel-toggle':   'Show / hide question',
 };
 const SOUND_STORAGE_KEY = 'examiner_sounds';
 
@@ -448,9 +453,6 @@ function playSound(name) {
                 _playTone(1200, 'square', now + 0.12, 0.04, 0.06 * v, ctx);
                 _playTone(950,  'square', now + 0.16, 0.05, 0.06 * v, ctx);
                 break;
-            case 'wheel-toggle':
-                _playTone(620, 'sine', now, 0.04, 0.08 * v, ctx);
-                break;
             case 'end':
             case 'finish':
                 // ── Section 1: Fanfare run (0.00–0.60s) ──────────────────
@@ -569,6 +571,13 @@ function _buildSoundPanel(panel) {
     if (!panel) return;
     panel.innerHTML = '';
     let masterOff = _soundSettings.muted;
+    let isWheel = panel.id === 'wheelSoundPanel';
+
+    let uiSounds = isWheel ? UI_SOUNDS.filter(n => WHEEL_USED_UI_SOUNDS.has(n)) : UI_SOUNDS;
+    let examSounds = EXAM_SOUNDS.filter(n => {
+        let isWheelSound = n.startsWith('wheel-');
+        return isWheel ? WHEEL_USED_EXAM_SOUNDS.has(n) : !isWheelSound;
+    });
 
     // Master toggle
     let allRow = _makeSoundRow('All sounds', !masterOff, true, function(checked) {
@@ -584,39 +593,43 @@ function _buildSoundPanel(panel) {
     panel.appendChild(_makeDivider());
     panel.appendChild(_makeVolumeRow(masterOff));
 
-    // UI / Click sounds group
-    panel.appendChild(_makeDivider());
-    let uiOn = _soundSettings.groups.ui;
-    let uiEnabled = !masterOff;
-    let uiGroupRow = _makeSoundRow('UI / Click sounds', uiOn, uiEnabled, function(checked) {
-        _soundSettings.groups.ui = checked;
-        _saveSoundSettings();
-        _buildSoundPanels();
-    });
-    uiGroupRow.classList.add('sound-panel-group');
-    panel.appendChild(uiGroupRow);
-
-    UI_SOUNDS.forEach(function(name) {
-        let subEnabled = uiEnabled && uiOn;
-        let row = _makeSoundRow(SOUND_LABELS[name], _soundSettings.sounds[name], subEnabled, function(checked) {
-            _soundSettings.sounds[name] = checked;
+    // UI / Click sounds group (only if any are used in this mode)
+    if (uiSounds.length > 0) {
+        panel.appendChild(_makeDivider());
+        let uiOn = _soundSettings.groups.ui;
+        let uiEnabled = !masterOff;
+        let uiGroupRow = _makeSoundRow('UI / Click sounds', uiOn, uiEnabled, function(checked) {
+            _soundSettings.groups.ui = checked;
             _saveSoundSettings();
-            _updateSoundBtn();
+            _buildSoundPanels();
         });
-        row.classList.add('sound-panel-sub');
-        panel.appendChild(row);
-    });
+        uiGroupRow.classList.add('sound-panel-group');
+        panel.appendChild(uiGroupRow);
 
-    // Exam sounds (individual)
-    panel.appendChild(_makeDivider());
-    EXAM_SOUNDS.forEach(function(name) {
-        let row = _makeSoundRow(SOUND_LABELS[name], _soundSettings.sounds[name], !masterOff, function(checked) {
-            _soundSettings.sounds[name] = checked;
-            _saveSoundSettings();
-            _updateSoundBtn();
+        uiSounds.forEach(function(name) {
+            let subEnabled = uiEnabled && uiOn;
+            let row = _makeSoundRow(SOUND_LABELS[name], _soundSettings.sounds[name], subEnabled, function(checked) {
+                _soundSettings.sounds[name] = checked;
+                _saveSoundSettings();
+                _updateSoundBtn();
+            });
+            row.classList.add('sound-panel-sub');
+            panel.appendChild(row);
         });
-        panel.appendChild(row);
-    });
+    }
+
+    // Exam / mode-specific sounds (individual)
+    if (examSounds.length > 0) {
+        panel.appendChild(_makeDivider());
+        examSounds.forEach(function(name) {
+            let row = _makeSoundRow(SOUND_LABELS[name], _soundSettings.sounds[name], !masterOff, function(checked) {
+                _soundSettings.sounds[name] = checked;
+                _saveSoundSettings();
+                _updateSoundBtn();
+            });
+            panel.appendChild(row);
+        });
+    }
 }
 
 function _makeSoundRow(label, checked, enabled, onChange) {

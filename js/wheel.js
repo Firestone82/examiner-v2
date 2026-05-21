@@ -8,7 +8,7 @@ const WHEEL_PREFS_KEY = 'examiner_wheel_prefs';
 
 const WHEEL_DEFAULT_PREFS = {
     size: 100,
-    textScale: 100,
+    textScale: 75,
     spinTimeMs: 4500,
     showHints: true,
 };
@@ -63,7 +63,12 @@ function easeOutQuint(t) {
 
 class QuestionsWheel {
     constructor(questions) {
+        // Master list (input order). The sidebar always renders this set,
+        // sorted by color, so it stays easy to find a question.
         this.questions = questions.slice();
+        // Order used to lay sections on the wheel — shuffled independently
+        // of the sidebar order.
+        this.wheelOrder = questions.slice();
         this.hidden = new Set();
         this.rotation = 0;
         this.spinning = false;
@@ -74,7 +79,7 @@ class QuestionsWheel {
     }
 
     get active() {
-        return this.questions.filter(q => !this.hidden.has(q.id));
+        return this.wheelOrder.filter(q => !this.hidden.has(q.id));
     }
 
     attach() {
@@ -86,9 +91,18 @@ class QuestionsWheel {
         let hub = document.getElementById('wheelHub');
         if (hub) hub.onclick = () => this.spin();
 
-        document.getElementById('wheelModalClose').onclick = () => this.closeModal();
-        document.getElementById('wheelModalHide').onclick = () => this.hideSelected();
-        document.getElementById('wheelModalShowHint').onclick = () => this.toggleHintReveal();
+        document.getElementById('wheelModalClose').onclick = () => {
+            playSound('next');
+            this.closeModal();
+        };
+        document.getElementById('wheelModalHide').onclick = () => {
+            playSound('navigate');
+            this.hideSelected();
+        };
+        document.getElementById('wheelModalShowHint').onclick = () => {
+            // 'show' is played by toggleHintReveal when actually revealing
+            this.toggleHintReveal();
+        };
 
         let modal = document.getElementById('wheelModal');
         modal.addEventListener('click', (e) => {
@@ -185,18 +199,33 @@ class QuestionsWheel {
 
         let shuffleBtn = document.getElementById('wheelShuffleBtn');
         if (shuffleBtn) {
-            shuffleBtn.onclick = () => this.shuffleQuestions();
+            shuffleBtn.onclick = () => this.shuffleWheel();
+        }
+
+        let showAllBtn = document.getElementById('wheelShowAllBtn');
+        if (showAllBtn) {
+            showAllBtn.onclick = () => this.showAllQuestions();
         }
 
         this.render();
     }
 
-    shuffleQuestions() {
+    shuffleWheel() {
         if (this.spinning) return;
-        shuffle(this.questions);
+        shuffle(this.wheelOrder);
+        this.resetSpinner();
+        this.renderWheel();
+        this.updateSpinButton();
+        playSound('wheel-shuffle');
+    }
+
+    showAllQuestions() {
+        if (this.spinning) return;
+        if (this.hidden.size === 0) return;
+        this.hidden.clear();
         this.resetSpinner();
         this.render();
-        playSound('wheel-shuffle');
+        playSound('select');
     }
 
     applySize() {
@@ -353,7 +382,17 @@ class QuestionsWheel {
         let list = document.getElementById('wheelQuestionList');
         list.innerHTML = '';
         let q = this.searchQuery;
-        this.questions.forEach(question => {
+
+        // Sort by hue so same-color questions are grouped together,
+        // then by id for stability inside a color group.
+        let sorted = this.questions.slice().sort((a, b) => {
+            let ha = hexToHue(this.colorFor(a));
+            let hb = hexToHue(this.colorFor(b));
+            if (ha !== hb) return ha - hb;
+            return (a.id ?? 0) - (b.id ?? 0);
+        });
+
+        sorted.forEach(question => {
             let title = (question.question && question.question.title) || ('Question #' + question.id);
             if (q && !title.toLowerCase().includes(q)) return;
 
@@ -383,14 +422,16 @@ class QuestionsWheel {
 
     toggleQuestion(id) {
         if (this.spinning) return;
-        if (this.hidden.has(id)) {
+        let wasHidden = this.hidden.has(id);
+        if (wasHidden) {
             this.hidden.delete(id);
         } else {
             this.hidden.add(id);
         }
         this.resetSpinner();
         this.render();
-        playSound('wheel-toggle');
+        // Show = select, hide = deselect — reuse prompter UI sounds.
+        playSound(wasHidden ? 'select' : 'deselect');
     }
 
     resetSpinner() {
@@ -477,15 +518,15 @@ class QuestionsWheel {
 
         let contentEl = document.createElement('div');
         contentEl.className = 'wheel-modal-content';
-        let qType = question.type;
-        let qContent = question.question && question.question.content;
-        if (qType === 'image') {
+        let qContentType = (question.question && question.question.type) || 'text';
+        let qContent = (question.question && question.question.content) || '';
+        if (qContentType === 'image') {
             let img = document.createElement('img');
-            img.src = qContent || '';
+            img.src = qContent;
             img.alt = titleEl.textContent;
             contentEl.appendChild(img);
         } else {
-            contentEl.textContent = qContent || '';
+            contentEl.textContent = qContent;
         }
         body.appendChild(contentEl);
 
@@ -553,6 +594,7 @@ class QuestionsWheel {
         if (!this.prefs.showHints) return;
         this.hintRevealed = !this.hintRevealed;
         this.applyHintsButton();
+        if (this.hintRevealed) playSound('show');
     }
 
     closeModal() {
@@ -576,4 +618,25 @@ class QuestionsWheel {
 function polarToCartesian(cx, cy, r, angleDeg) {
     let a = angleDeg * Math.PI / 180;
     return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+}
+
+function hexToHue(hex) {
+    if (typeof hex !== 'string') return 0;
+    let c = hex.replace('#', '');
+    if (c.length === 3) c = c.split('').map(x => x + x).join('');
+    if (c.length === 4) c = c.slice(0,3).split('').map(x => x + x).join('');
+    if (c.length === 8) c = c.slice(0, 6);
+    if (c.length !== 6) return 0;
+    let r = parseInt(c.slice(0,2), 16) / 255;
+    let g = parseInt(c.slice(2,4), 16) / 255;
+    let b = parseInt(c.slice(4,6), 16) / 255;
+    let max = Math.max(r, g, b), min = Math.min(r, g, b);
+    if (max === min) return -1; // grayscale → keep first
+    let h;
+    if (max === r) h = ((g - b) / (max - min)) % 6;
+    else if (max === g) h = (b - r) / (max - min) + 2;
+    else h = (r - g) / (max - min) + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+    return h;
 }

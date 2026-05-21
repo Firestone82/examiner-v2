@@ -42,19 +42,11 @@ function VerifyDlc(questions) {
 /**
  * @brief Detects if the DLC is a questions-wheel DLC.
  *
- * Preferred: the top-level "type" field equals "wheeler" (or "prompter" for
- * the standard examiner). Falls back to detecting wheel-shaped questions
- * for DLCs without an explicit type.
+ * Selected via the top-level "type" field: "wheeler" runs the wheel module,
+ * anything else (or absent) runs the standard examiner / prompter.
  */
 function isWheelDlc(dlc) {
-    if (!dlc || !dlc.data || dlc.data.length === 0) return false;
-    if (dlc.type === 'wheeler') return true;
-    if (dlc.type === 'prompter') return false;
-    return dlc.data.every(q =>
-        (q.type === 'text' || q.type === 'image')
-        && q.question
-        && typeof q.question.title === 'string'
-    );
+    return !!(dlc && dlc.type === 'wheeler' && Array.isArray(dlc.data) && dlc.data.length > 0);
 }
 
 
