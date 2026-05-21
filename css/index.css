@@ -1261,7 +1261,7 @@ p.answer.dismissed {
     font-size: 0.82rem;
     white-space: nowrap;
     flex-shrink: 0;
-    min-width: 5.4rem;
+    min-width: 7.5rem;
 }
 
 .wheel-config-row input[type="range"] {
@@ -1297,9 +1297,22 @@ p.answer.dismissed {
 .wheel-config-value {
     color: #888;
     font-size: 0.78rem;
-    min-width: 3rem;
-    text-align: right;
+    width: 3.4rem;
     flex-shrink: 0;
+    text-align: right;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid transparent;
+    outline: none;
+    padding: 0;
+    font-family: inherit;
+    cursor: text;
+    transition: border-color 0.12s, color 0.12s;
+}
+
+.wheel-config-value:focus {
+    border-bottom-color: #555;
+    color: #ccc;
 }
 
 .wheel-config-divider {
@@ -1308,9 +1321,6 @@ p.answer.dismissed {
     margin: 0.2rem 0;
 }
 
-.wheel-config-toggle-row .sound-switch {
-    margin-left: auto;
-}
 
 /* Markdown hint rendering – tame the default md.css sizing for compact display */
 .wheel-modal-answer zero-md {

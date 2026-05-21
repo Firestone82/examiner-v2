@@ -168,6 +168,51 @@ class QuestionsWheel {
             };
         }
 
+        // ── Editable value inputs ─────────────────────────────────────────────
+        // Helper: wire a text input so the user can type a value directly.
+        // parse(str) → raw number (in the displayed unit), apply(clamped) runs
+        // the side-effects, refresh() re-renders the current stored value.
+        let bindValueInput = (inputId, sliderEl, min, max, step, parse, apply, refresh) => {
+            let inp = document.getElementById(inputId);
+            if (!inp) return;
+            inp.addEventListener('focus', () => inp.select());
+            let commit = () => {
+                let v = parse(inp.value);
+                if (!isNaN(v) && isFinite(v)) {
+                    v = Math.max(min, Math.min(max, Math.round(v / step) * step));
+                    if (sliderEl) sliderEl.value = v;
+                    apply(v);
+                }
+                refresh();
+            };
+            inp.addEventListener('blur', commit);
+            inp.addEventListener('keydown', e => {
+                if (e.key === 'Enter') { e.preventDefault(); commit(); inp.blur(); }
+                else if (e.key === 'Escape') { refresh(); inp.blur(); }
+            });
+        };
+
+        bindValueInput('wheelSizeValue', sizeSlider, 60, 200, 5,
+            s => parseInt(s, 10),
+            v => { this.prefs.size = v; this.applySize(); saveWheelPrefs(this.prefs); },
+            () => this.updateSizeLabel()
+        );
+        bindValueInput('wheelTextSizeValue', textSlider, 20, 400, 5,
+            s => parseInt(s, 10),
+            v => { this.prefs.textScale = v; this.applyTextScale(); this.renderWheel(); saveWheelPrefs(this.prefs); },
+            () => this.updateTextLabel()
+        );
+        bindValueInput('wheelSpinTimeValue', spinSlider, 1000, 10000, 250,
+            s => Math.round(parseFloat(s) * 1000),
+            v => { this.prefs.spinTimeMs = v; saveWheelPrefs(this.prefs); },
+            () => this.updateSpinTimeLabel()
+        );
+        bindValueInput('wheelHubSizeValue', hubSlider, 8, 40, 1,
+            s => parseInt(s, 10),
+            v => { this.prefs.hubSize = v; this.applyHubSize(); this.renderWheel(); saveWheelPrefs(this.prefs); },
+            () => this.updateHubSizeLabel()
+        );
+
         let hintsSwitch = document.getElementById('wheelHintsSwitch');
         let hintsRow = document.getElementById('wheelHintsRow');
         let updateSwitch = () => hintsSwitch.classList.toggle('on', this.prefs.showHints);
@@ -294,22 +339,22 @@ class QuestionsWheel {
 
     updateHubSizeLabel() {
         let el = document.getElementById('wheelHubSizeValue');
-        if (el) el.textContent = this.prefs.hubSize + '%';
+        if (el && document.activeElement !== el) el.value = this.prefs.hubSize + '%';
     }
 
     updateSizeLabel() {
         let el = document.getElementById('wheelSizeValue');
-        if (el) el.textContent = this.prefs.size + '%';
+        if (el && document.activeElement !== el) el.value = this.prefs.size + '%';
     }
 
     updateTextLabel() {
         let el = document.getElementById('wheelTextSizeValue');
-        if (el) el.textContent = this.prefs.textScale + '%';
+        if (el && document.activeElement !== el) el.value = this.prefs.textScale + '%';
     }
 
     updateSpinTimeLabel() {
         let el = document.getElementById('wheelSpinTimeValue');
-        if (el) el.textContent = (this.prefs.spinTimeMs / 1000).toFixed(2).replace(/\.?0+$/, '') + 's';
+        if (el && document.activeElement !== el) el.value = (this.prefs.spinTimeMs / 1000).toFixed(2).replace(/\.?0+$/, '') + 's';
     }
 
     render() {
