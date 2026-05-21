@@ -87,14 +87,17 @@ class QuestionsWheel {
         this.searchQuery = '';
         this.prefs = loadWheelPrefs();
         this.hintRevealed = false;
-        // Groups come from the DLC itself, not from user settings.
+        // Groups come from the DLC itself, not from user settings. A
+        // question may reference a group by its id (short) or its name.
         this.groups = Array.isArray(groups)
             ? groups.filter(g => g && typeof g.name === 'string')
             : [];
         this.questionGroups = {};
         this.questions.forEach(q => {
             let g = q && q.question && q.question.group;
-            if (typeof g === 'string' && g) this.questionGroups[q.id] = g;
+            if ((typeof g === 'string' && g) || typeof g === 'number') {
+                this.questionGroups[q.id] = g;
+            }
         });
         this.timerInterval = null;
         this.timerStart = 0;
@@ -515,9 +518,14 @@ class QuestionsWheel {
         }
     }
 
+    findGroup(ref) {
+        if (ref === undefined || ref === null || ref === '') return null;
+        return this.groups.find(g => g.id === ref || g.name === ref) || null;
+    }
+
     colorFor(q) {
-        if (q && this.questionGroups && this.questionGroups[q.id]) {
-            let grp = this.groups.find(g => g.name === this.questionGroups[q.id]);
+        if (q && this.questionGroups) {
+            let grp = this.findGroup(this.questionGroups[q.id]);
             if (grp && typeof grp.color === 'string') return grp.color;
         }
         let c = q && q.question && q.question.color;
@@ -641,17 +649,20 @@ class QuestionsWheel {
         };
 
         let useGroups = this.groups.length > 0
-            && this.questions.some(qq => this.questionGroups[qq.id]);
+            && this.questions.some(qq => this.findGroup(this.questionGroups[qq.id]));
 
         if (useGroups) {
+            // Buckets are keyed by group name (guaranteed unique-ish) so we
+            // can iterate this.groups in declared order while still matching
+            // questions that referenced their group by id.
             let buckets = {};
             this.groups.forEach(g => { buckets[g.name] = []; });
             let ungrouped = [];
 
             this.questions.forEach(question => {
                 if (!matchesQuery(question)) return;
-                let gname = this.questionGroups[question.id];
-                if (gname && buckets[gname]) buckets[gname].push(question);
+                let group = this.findGroup(this.questionGroups[question.id]);
+                if (group) buckets[group.name].push(question);
                 else ungrouped.push(question);
             });
 
