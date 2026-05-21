@@ -9,12 +9,19 @@ Just simply [open the app](https://adaxiik.github.io/examiner-v2/) and drag and 
 ```json
 {
     "filetype": "examiner-dlc",
-    "version": "1.3",
+    "version": "1.4",
+    "type": "prompter" | "wheeler", // optional, default "prompter"
     "name": ... ,
     "poolsize" : ... , // optional (default: 5)
     "data": []
 }
 ```
+
+The optional top-level `type` field selects the app's mode:
+
+- `prompter` (default) — the standard examiner with a question pool.
+- `wheeler` — the spinnable Questions Wheel.
+
 ### The `data` field is an array of questions. Each question is an object with the following structure:
 
 ```json
@@ -31,7 +38,7 @@ Just simply [open the app](https://adaxiik.github.io/examiner-v2/) and drag and 
 ```
 
 - `id` is unique question id, recommended to use 0,1...
-- `type` is a type of question, can be `self-assessment` or `question-with-answers`
+- `type` is a type of question — `self-assessment` or `question-with-answers`
 
 ## For type `question-with-answers`:
 
@@ -52,7 +59,7 @@ Just simply [open the app](https://adaxiik.github.io/examiner-v2/) and drag and 
 ```json
 {
     "filetype": "examiner-dlc",
-    "version": "1.3",
+    "version": "1.4",
     "name": "example",
     "data": [
         {
@@ -122,6 +129,70 @@ Just simply [open the app](https://adaxiik.github.io/examiner-v2/) and drag and 
     ]
 }
 ```
+
+# Questions Wheel
+
+A questions-wheel DLC turns the app into a spinnable wheel. Every section is
+a question, colored by its `question.color`. Spinning picks one at random and
+shows it in a modal with the full question text. Questions can be hidden from
+the wheel via the question list in the sidebar (sorted by color) or via the
+"Hide question" button in the modal.
+
+To enable wheel mode set the top-level `"type": "wheeler"` field on the DLC.
+Each question is currently a `self-assessment` (free-form question with
+optional hint text); `question-with-answers` may be added to the wheel in
+the future.
+
+### Wheel question structure
+
+```json
+{
+    "id": 0,
+    "type": "self-assessment",
+    "question": {
+        "type": "text",
+        "content": "long question version",
+        "title": "short version shown on wheel",
+        "color": "#e53935"
+    },
+    "answers": [
+        "optional hint text — supports **markdown**"
+    ]
+}
+```
+
+- outer `type` — `self-assessment`
+- `question.type` — `text` or `image`, controls how `question.content` renders
+- `question.content` — full question text (or image URL when `question.type` is `image`)
+- `question.title` — short label shown on the wheel section
+- `question.color` — hex color (e.g. `#e53935`) used for the wheel section
+- `answers` — array of strings used as optional hints in the modal; rendered
+  as markdown when the user presses "Show hint"
+
+### Wheel controls
+
+Top section title:
+
+- Gear icon — configuration panel (wheel size, text size, spin time, show
+  hints toggle). All settings persist across sessions.
+- Speaker icon — sound configuration (only sounds used in the wheel are
+  shown).
+
+Sidebar header (Questions):
+
+- `⟳` — Show all hidden questions (restores them onto the wheel).
+- `⇄` — Shuffle the wheel's section order. Only the wheel is randomized;
+  the sidebar list always stays grouped by color.
+- 🔍 — Search the question list by title.
+
+Inside the modal:
+
+- "Show hint" — reveals the markdown-rendered hints (only present if hints
+  are enabled in the config and the question has any).
+- "Close question" — closes the modal, keeps the question on the wheel.
+- "Hide question" — removes that section from the wheel.
+
+See [example-wheel.dlc](example/example-wheel.dlc) for a complete example.
 
 # Text to DLC tool
 `txt2dlc.py` is a simple tool for converting text files to DLC files. 

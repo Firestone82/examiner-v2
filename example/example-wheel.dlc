@@ -1,0 +1,112 @@
+{
+    "filetype": "examiner-dlc",
+    "version": "1.4",
+    "type": "wheeler",
+    "name": "Wheel Example",
+    "data": [
+        {
+            "id": 0,
+            "type": "self-assessment",
+            "question": {
+                "type": "text",
+                "content": "Describe in detail what the lifecycle of a process looks like in a modern operating system, from creation through termination.",
+                "title": "Process lifecycle",
+                "color": "#e53935"
+            },
+            "answers": [
+                "**Stages:**\n\n- `fork` / `exec` — creation\n- *ready* → *running* → *waiting* → *terminated*\n\nScheduler moves processes between states."
+            ]
+        },
+        {
+            "id": 1,
+            "type": "self-assessment",
+            "question": {
+                "type": "text",
+                "content": "Explain the difference between TCP and UDP and when you would choose one over the other.",
+                "title": "TCP vs UDP",
+                "color": "#1e88e5"
+            },
+            "answers": [
+                "- **TCP** — reliable, ordered, connection-oriented\n- **UDP** — fast, no delivery guarantees, connectionless\n\nUse TCP for files / HTTP, UDP for games / streaming."
+            ]
+        },
+        {
+            "id": 2,
+            "type": "self-assessment",
+            "question": {
+                "type": "text",
+                "content": "Walk through the algorithmic complexity of common sorting algorithms — at least bubble, merge, quick and heap.",
+                "title": "Sorting complexity",
+                "color": "#43a047"
+            },
+            "answers": [
+                "| Algorithm | Avg | Worst |\n|-----------|-----|-------|\n| Bubble    | O(n²) | O(n²) |\n| Merge     | O(n log n) | O(n log n) |\n| Quick     | O(n log n) | O(n²) |\n| Heap      | O(n log n) | O(n log n) |"
+            ]
+        },
+        {
+            "id": 3,
+            "type": "self-assessment",
+            "question": {
+                "type": "text",
+                "content": "What is normalization in databases? Describe 1NF, 2NF and 3NF.",
+                "title": "DB normalization",
+                "color": "#fb8c00"
+            },
+            "answers": [
+                "1. **1NF** — atomic values\n2. **2NF** — no partial dependencies\n3. **3NF** — no transitive dependencies"
+            ]
+        },
+        {
+            "id": 4,
+            "type": "self-assessment",
+            "question": {
+                "type": "text",
+                "content": "Explain the SOLID principles of object-oriented design.",
+                "title": "SOLID principles",
+                "color": "#8e24aa"
+            },
+            "answers": [
+                "- **S**ingle responsibility\n- **O**pen / closed\n- **L**iskov substitution\n- **I**nterface segregation\n- **D**ependency inversion"
+            ]
+        },
+        {
+            "id": 5,
+            "type": "self-assessment",
+            "question": {
+                "type": "text",
+                "content": "What does the OSI model look like and what does each layer do?",
+                "title": "OSI model",
+                "color": "#00897b"
+            },
+            "answers": [
+                "Physical → Data Link → Network → Transport → Session → Presentation → Application"
+            ]
+        },
+        {
+            "id": 6,
+            "type": "self-assessment",
+            "question": {
+                "type": "text",
+                "content": "Describe how a hash table works and how collisions are typically resolved.",
+                "title": "Hash tables",
+                "color": "#f4511e"
+            },
+            "answers": [
+                "Hash key → bucket index. Collisions: **chaining** (linked list) or **open addressing** (probe to next slot)."
+            ]
+        },
+        {
+            "id": 7,
+            "type": "self-assessment",
+            "question": {
+                "type": "text",
+                "content": "What are the differences between processes and threads?",
+                "title": "Process vs thread",
+                "color": "#3949ab"
+            },
+            "answers": [
+                "- **Processes** have their own memory space\n- **Threads** share memory within a process"
+            ]
+        }
+    ]
+}

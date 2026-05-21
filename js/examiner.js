@@ -39,6 +39,16 @@ function VerifyDlc(questions) {
     return true;
 }
 
+/**
+ * @brief Detects if the DLC is a questions-wheel DLC.
+ *
+ * Selected via the top-level "type" field: "wheeler" runs the wheel module,
+ * anything else (or absent) runs the standard examiner / prompter.
+ */
+function isWheelDlc(dlc) {
+    return !!(dlc && dlc.type === 'wheeler' && Array.isArray(dlc.data) && dlc.data.length > 0);
+}
+
 
 class QuestionPool {
     constructor(size) {

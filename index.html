@@ -152,6 +152,100 @@
         </p>
     </div>
 
+    <!-- Questions Wheel view -->
+    <div id="wheelView" hidden>
+        <div class="uk-grid-collapse" uk-grid>
+            <div class="uk-width-3-4@l uk-width-4-5@xl">
+                <div class="section-title">
+                    <button class="exit-button uk-button uk-button-danger" type="button"
+                        onclick="window.location.reload();"><a class="uk-link-reset" uk-icon="icon: sign-out; ratio: 1.1;"></a></button>
+                    <span id="wheel-dlc-name">Questions Wheel</span>
+                    <button class="wheel-config-btn" id="wheelConfigButton" onclick="toggleWheelConfig(event)" title="Wheel configuration">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    </button>
+                    <div id="wheelConfigPanel" class="wheel-config-panel" hidden>
+                        <div class="wheel-config-row" data-tooltip="Overall wheel size (60 – 200%)">
+                            <span class="wheel-config-label">Wheel size</span>
+                            <input type="range" id="wheelSizeSlider" min="60" max="200" step="5" value="100">
+                            <input type="text" class="wheel-config-value" id="wheelSizeValue" value="100%">
+                        </div>
+                        <div class="wheel-config-row" data-tooltip="Label font size (20 – 400%)">
+                            <span class="wheel-config-label">Text size</span>
+                            <input type="range" id="wheelTextSizeSlider" min="20" max="400" step="5" value="50">
+                            <input type="text" class="wheel-config-value" id="wheelTextSizeValue" value="50%">
+                        </div>
+                        <div class="wheel-config-row" data-tooltip="Spin animation duration (1 – 10 s)">
+                            <span class="wheel-config-label">Spin time</span>
+                            <input type="range" id="wheelSpinTimeSlider" min="1000" max="10000" step="250" value="4000">
+                            <input type="text" class="wheel-config-value" id="wheelSpinTimeValue" value="4s">
+                        </div>
+                        <div class="wheel-config-row" data-tooltip="Size of the central SPIN hub (8 – 40%)">
+                            <span class="wheel-config-label">Spin button</span>
+                            <input type="range" id="wheelHubSizeSlider" min="8" max="40" step="1" value="15">
+                            <input type="text" class="wheel-config-value" id="wheelHubSizeValue" value="15%">
+                        </div>
+                        <div class="wheel-config-divider"></div>
+                        <label class="wheel-config-row wheel-config-toggle-row" id="wheelHintsRow" data-tooltip="Show the 'Show hint' button in the question modal">
+                            <span class="wheel-config-label">Show hints</span>
+                            <span class="sound-switch" id="wheelHintsSwitch"></span>
+                        </label>
+                        <label class="wheel-config-row wheel-config-toggle-row" id="wheelTextOuterRow" data-tooltip="Place labels at the outer rim instead of centred in the sector">
+                            <span class="wheel-config-label">Align to outer side</span>
+                            <span class="sound-switch" id="wheelTextOuterSwitch"></span>
+                        </label>
+                        <label class="wheel-config-row wheel-config-toggle-row" id="wheelDynamicRotationRow" data-tooltip="Re-orient labels after each spin so none appear upside-down">
+                            <span class="wheel-config-label">Auto rotate</span>
+                            <span class="sound-switch" id="wheelDynamicRotationSwitch"></span>
+                        </label>
+                    </div>
+                    <button class="sound-toggle-btn wheel-sound-btn" id="wheelSoundButton" data-panel="wheelSoundPanel" onclick="toggleSound(event)" title="Sounds"></button>
+                    <div id="wheelSoundPanel" class="sound-panel" hidden></div>
+                </div>
+                <div class="wheel-stage">
+                    <div class="wheel-container" id="wheelContainer">
+                        <div class="wheel-pointer"></div>
+                        <div class="wheel-spinner" id="wheelSpinner">
+                            <svg id="wheelSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600"></svg>
+                        </div>
+                        <div class="wheel-hub" id="wheelHub">SPIN</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="uk-width-1-4@l uk-width-1-5@xl">
+                <div class="sidebar">
+                    <span class="section-title darker">Questions
+                        <button class="wheel-showall-btn" id="wheelShowAllBtn" title="Show all hidden questions">⟳</button>
+                        <button class="wheel-search-btn" id="wheelSearchBtn" title="Search questions"><span uk-icon="search"></span></button>
+                        <button class="wheel-shuffle-header-btn" id="wheelShuffleBtn" title="Randomize wheel section order">⇄</button>
+                    </span>
+                    <div class="wheel-search-bar" id="wheelSearchBar" hidden>
+                        <input type="text" id="wheelQuestionSearch" class="question-search-input" placeholder="Search...">
+                    </div>
+                    <div class="wheel-question-list" id="wheelQuestionList">
+                        <!-- JS: Wheel Question List -->
+                    </div>
+                    <div class="wheel-legend">
+                        Click a question to toggle it on the wheel.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Wheel question modal -->
+    <div id="wheelModal" hidden>
+        <div id="wheelModalContent">
+            <div id="wheelModalColorBar"></div>
+            <div id="wheelModalBody"></div>
+            <div id="wheelModalButtons">
+                <button id="wheelModalShowHint" class="uk-button uk-button-default" type="button" hidden>Show hint</button>
+                <button id="wheelModalClose" class="uk-button uk-button-default" type="button">Close question</button>
+                <button id="wheelModalHide" class="uk-button uk-button-danger" type="button">Hide question</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Question preview modal (end screen) -->
     <div id="questionModal" hidden>
         <div id="questionModalContent">
@@ -163,6 +257,7 @@
     <script src="js/utils.js?v=6"></script>
     <script src="js/examiner.js?v=6"></script>
     <script src="js/interpret.js?v=6"></script>
+    <script src="js/wheel.js?v=9"></script>
     <script src="js/index.js?v=6"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/uikit/3.5.9/js/uikit.min.js"
