@@ -1173,6 +1173,35 @@ p.answer.dismissed {
     white-space: nowrap;
 }
 
+.wheel-question-open {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    color: #959595;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.1s, color 0.1s;
+}
+
+.wheel-question-item:hover .wheel-question-open {
+    opacity: 1;
+}
+
+.wheel-question-open:hover {
+    color: #1e87f0;
+}
+
+.wheel-question-open svg {
+    display: block;
+    width: 1rem;
+    height: 1rem;
+}
+
 .wheel-question-toggle {
     flex-shrink: 0;
     font-weight: bold;

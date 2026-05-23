@@ -808,12 +808,25 @@ class QuestionsWheel {
         titleEl.className = 'wheel-question-title';
         titleEl.textContent = title;
 
+        let openBtn = document.createElement('button');
+        openBtn.type = 'button';
+        openBtn.className = 'wheel-question-open';
+        openBtn.title = 'Open question';
+        openBtn.innerHTML = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/></svg>";
+        openBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (this.spinning) return;
+            playSound('select');
+            this.showQuestionModal(question);
+        };
+
         let toggle = document.createElement('span');
         toggle.className = 'wheel-question-toggle';
         toggle.textContent = isHidden ? '✕' : '✓';
 
         item.appendChild(dot);
         item.appendChild(titleEl);
+        item.appendChild(openBtn);
         item.appendChild(toggle);
 
         // Hover tooltip shows the long question text (the title in the row
