@@ -189,6 +189,10 @@ Sidebar header (Questions):
   the sidebar list always stays grouped by color.
 - 🔍 — Search the question list by title.
 
+Each question row also has an open button (eye icon, shown on hover) that
+opens that question's modal directly, so you can review (and rate) a specific
+question without spinning.
+
 Inside the modal:
 
 - "Show hint" — reveals the markdown-rendered hints (only present if hints
