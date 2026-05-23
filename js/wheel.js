@@ -34,14 +34,14 @@ function clearWheelState(name) {
     }
 }
 
-// True only when the saved state differs from a fresh wheel — i.e. the user
-// hid a question, collapsed a group or shuffled the order. A wheel that was
-// merely opened (and so persisted its default layout) is not "meaningful" and
-// should not trigger the continue/reset prompt.
+// True only when the saved state reflects real progress — i.e. the user hid a
+// question or shuffled the order. Group collapse state is just a view
+// preference (and may be set automatically for large DLCs), so it does not
+// count; a wheel that was merely opened is not "meaningful" and should not
+// trigger the continue/reset prompt.
 function isMeaningfulWheelState(saved, questions) {
     if (!saved) return false;
     if (Array.isArray(saved.hidden) && saved.hidden.length > 0) return true;
-    if (Array.isArray(saved.collapsed) && saved.collapsed.length > 0) return true;
     if (Array.isArray(saved.order) && Array.isArray(questions)) {
         let orig = questions.map(q => q.id);
         if (saved.order.length !== orig.length) return true;
@@ -160,7 +160,25 @@ class QuestionsWheel {
         this.timerInterval = null;
         this.timerStart = 0;
 
+        let hadSavedState = !!loadWheelState(this.stateName);
         this.restoreState();
+        // On a fresh open of a large grouped DLC, start with every section
+        // collapsed so the list stays manageable.
+        if (!hadSavedState && this.questions.length > 15) {
+            this.collapseAllSections();
+        }
+    }
+
+    // Collapses every group section (and the ungrouped bucket). No-op for
+    // DLCs that don't use groups, since there are no sections to collapse.
+    collapseAllSections() {
+        let useGroups = this.groups.length > 0
+            && this.questions.some(q => this.findGroup(this.questionGroups[q.id]));
+        if (!useGroups) return;
+        this.groups.forEach(g => this.collapsedGroups.add(g.name));
+        if (this.questions.some(q => !this.findGroup(this.questionGroups[q.id]))) {
+            this.collapsedGroups.add('__ungrouped__');
+        }
     }
 
     get active() {
