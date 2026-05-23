@@ -241,6 +241,25 @@ function showStats(statsData, questions) {
     holder.innerHTML = html;
 }
 
+/**
+ * @brief Builds the small "peek" button shown on a question-list tile.
+ * Clicking it previews the question (with correct answers) without
+ * navigating to it or affecting exam progress.
+ */
+function createPeekButton(questionId) {
+    let btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'peek-btn';
+    btn.title = 'Show question';
+    btn.innerHTML = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/></svg>";
+    btn.onclick = function (e) {
+        e.stopPropagation();
+        playSound('show');
+        showQuestionModal(questionId);
+    };
+    return btn;
+}
+
 function showQuestionModal(qid) {
     let allQuestions = (examiner && examiner.questions) ? examiner.questions : (currentDlcData ? currentDlcData.data : []);
     let q = allQuestions.find(q => String(q.id) === String(qid));

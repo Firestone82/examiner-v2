@@ -797,7 +797,43 @@ p.answer.notselected:hover {
     transform: translate(-50%, -50%) rotate(45deg);
 }
 
-.question-list .wrong::before, 
+.question-list div .peek-btn {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 1.25rem;
+    height: 1.25rem;
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    border-bottom-left-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.12s ease, background 0.12s ease;
+    z-index: 2;
+    line-height: 1;
+}
+
+.question-list div:hover .peek-btn {
+    opacity: 1;
+}
+
+.question-list div .peek-btn:hover {
+    background: #1e87f0;
+}
+
+.question-list div .peek-btn svg {
+    display: block;
+    width: 0.8rem;
+    height: 0.8rem;
+}
+
+.question-list .wrong::before,
 .legend .wrong {
     background: #f44336;
 }
