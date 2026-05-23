@@ -91,6 +91,46 @@ let stats = {
     questionWrongCounts: {},
 };
 
+// ── Self-rating scores (persisted per DLC, survive reloads) ──────────────────
+
+const SCORES_KEY = 'examiner_scores';
+
+function getAllScores() {
+    try {
+        return JSON.parse(localStorage.getItem(SCORES_KEY)) || {};
+    } catch { return {}; }
+}
+
+function getQuestionScore(qid) {
+    let dlcScores = getAllScores()[currentDlcName];
+    return (dlcScores && dlcScores[qid]) || 0;
+}
+
+function setQuestionScore(qid, score) {
+    let all = getAllScores();
+    if (!all[currentDlcName]) all[currentDlcName] = {};
+    if (score > 0) all[currentDlcName][qid] = score;
+    else delete all[currentDlcName][qid];
+    try {
+        localStorage.setItem(SCORES_KEY, JSON.stringify(all));
+    } catch (e) {
+        console.warn('Could not save scores:', e);
+    }
+}
+
+function updateSidebarScore(qid) {
+    let item = document.getElementById('question-list-item-' + qid);
+    if (!item) return;
+    let score = getQuestionScore(qid);
+    if (score > 0) item.dataset.score = score;
+    else delete item.dataset.score;
+}
+
+function applyScoresToSidebar() {
+    if (!currentDlcData || !Array.isArray(currentDlcData.data)) return;
+    currentDlcData.data.forEach(q => updateSidebarScore(q.id));
+}
+
 // ── Session persistence ──────────────────────────────────────────────────────
 
 const SESSION_KEY = 'examiner_session';
@@ -197,6 +237,8 @@ function playGame(dlc, savedState) {
     if (savedState) {
         restoreSession(savedState, dlc.data);
     }
+
+    applyScoresToSidebar();
 
     nextQuestion();
 }
@@ -489,6 +531,7 @@ function reloadQuestionsFromContent(contents) {
 
     saveToRecent(newDlc.name || currentDlcName, contents);
     saveSession();
+    applyScoresToSidebar();
 
     let msg = 'Questions reloaded.';
     if (added > 0) msg += ' ' + added + ' new question(s) added.';

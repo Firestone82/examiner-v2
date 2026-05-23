@@ -87,6 +87,8 @@ function hideUnmarkButton() {
 function cleanUpHolders() {
     document.getElementById("questionHolder").innerHTML = "";
     document.getElementById("answersHolder").innerHTML = "";
+    let scoreRow = document.getElementById("scoreRow");
+    if (scoreRow) scoreRow.innerHTML = "";
     document.getElementById("md-holder").src = "";
     document.getElementById("md-holder").hidden = true;
 }
@@ -234,6 +236,33 @@ function showStats(statsData, questions) {
             let safeText = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
             html += `<tr class="stats-table-row" data-qid="${id}" onclick="showQuestionModal('${id}')">` +
                 `<td>${safeText}</td><td>${count}</td></tr>`;
+        }
+        html += `</tbody></table></div>`;
+    }
+
+    let scoreEntries = [];
+    if (questions && typeof getQuestionScore === 'function') {
+        questions.forEach(q => {
+            let s = getQuestionScore(q.id);
+            if (s > 0) scoreEntries.push([q.id, s, q]);
+        });
+        scoreEntries.sort((a, b) => a[1] - b[1]); // weakest first
+    }
+
+    if (scoreEntries.length > 0) {
+        html += `<p class="stats-section-title">Self-Rated Knowledge</p>
+        <div class="stats-table-wrapper">
+        <table class="stats-table">
+            <thead><tr><th>Question</th><th style="text-align:center;">Rating</th></tr></thead>
+            <tbody>`;
+        for (let [id, score, q] of scoreEntries) {
+            let text = (q && q.question && q.question.type === 'text')
+                ? (q.question.content.length > 90 ? q.question.content.substring(0, 90) + '…' : q.question.content)
+                : 'Question ID ' + id;
+            let safeText = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            let stars = '★'.repeat(score) + '☆'.repeat(5 - score);
+            html += `<tr class="stats-table-row" data-qid="${id}" onclick="showQuestionModal('${id}')">` +
+                `<td>${safeText}</td><td class="stats-stars">${stars}</td></tr>`;
         }
         html += `</tbody></table></div>`;
     }

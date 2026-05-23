@@ -70,6 +70,10 @@
                     <!-- JS: Question -->
                 </div>
 
+                <div id="scoreRow" class="score-row">
+                    <!-- JS: Self-rating stars -->
+                </div>
+
                 <div class="check-skip-row">
                     <button id="prevButton" class="uk-button uk-button-default" type="button" onclick="prevQuestion()" title="Previous question" disabled>PREV</button>
                     <button id="checkButton" class="uk-button uk-button-primary" type="button" onclick="checkAnswers()">Check</button>
@@ -116,6 +120,7 @@
                         <span class="circle wrong"></span> Wrong
                         <span class="circle correct wrong"></span> Corrected
                         <span class="circle skipped"></span> Skipped
+                        <span class="circle rated"></span> Rated ★
                     </div>
                     <button class="finish-exam-btn uk-button" onclick="confirmFinish()">Finish Exam</button>
                 </div>
