@@ -1746,7 +1746,7 @@ p.answer.dismissed {
     white-space: nowrap;
 }
 
-/* "Show this question" eye button on wheel sidebar items */
+/* "Show this question" eye button on wheel sidebar items — only on hover */
 .wheel-question-eye {
     flex-shrink: 0;
     background: none;
@@ -1758,7 +1758,15 @@ p.answer.dismissed {
     display: flex;
     align-items: center;
     line-height: 0;
-    transition: color 0.1s;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.1s, color 0.1s;
+}
+
+.wheel-question-item:hover .wheel-question-eye,
+.wheel-question-eye:focus {
+    opacity: 1;
+    pointer-events: auto;
 }
 
 .wheel-question-eye:hover {
