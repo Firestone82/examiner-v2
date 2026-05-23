@@ -113,6 +113,7 @@ class Examiner {
                 setupTooltip(qElement, question.question.content);
             }
             qElement.onclick = function() { playSound('navigate'); goToQuestion(question.id); };
+            qElement.appendChild(createPeekButton(question.id));
             qListElement.appendChild(qElement);
         });
 
