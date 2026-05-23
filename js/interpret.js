@@ -21,66 +21,6 @@ function interpretQuestion(question){
             alert("Error: unknown question type");
             break;
         }
-
-    renderScoreWidget(question);
-}
-
-/**
- * @brief Renders the 1-5 star self-rating widget for the current question.
- *        The rating reflects how well the user feels they know the answer and
- *        is persisted per DLC via setQuestionScore (survives reloads).
- */
-function renderScoreWidget(question) {
-    let row = document.getElementById("scoreRow");
-    if (!row) return;
-    row.innerHTML = "";
-
-    let qid = question["id"];
-
-    let label = document.createElement("span");
-    label.className = "score-label";
-    label.textContent = "How well do you know this?";
-    row.appendChild(label);
-
-    let stars = document.createElement("div");
-    stars.className = "score-stars";
-
-    for (let i = 1; i <= 5; i++) {
-        let star = document.createElement("span");
-        star.className = "score-star";
-        star.textContent = "★";
-        star.title = i + " / 5";
-        star.onmouseenter = function () { paintStars(stars, i); };
-        star.onclick = function () {
-            let newScore = (getQuestionScore(qid) === i) ? 0 : i;
-            setQuestionScore(qid, newScore);
-            paintStars(stars, newScore);
-            updateSidebarScore(qid);
-            playSound(newScore > 0 ? 'select' : 'deselect');
-        };
-        stars.appendChild(star);
-    }
-    stars.onmouseleave = function () { paintStars(stars, getQuestionScore(qid)); };
-    paintStars(stars, getQuestionScore(qid));
-    row.appendChild(stars);
-
-    let clear = document.createElement("button");
-    clear.type = "button";
-    clear.className = "score-clear";
-    clear.textContent = "Clear";
-    clear.title = "Clear rating";
-    clear.onclick = function () {
-        setQuestionScore(qid, 0);
-        paintStars(stars, 0);
-        updateSidebarScore(qid);
-        playSound('deselect');
-    };
-    row.appendChild(clear);
-}
-
-function paintStars(container, score) {
-    let starEls = container.querySelectorAll(".score-star");
-    starEls.forEach((s, idx) => s.classList.toggle("filled", (idx + 1) <= score));
 }
 
 

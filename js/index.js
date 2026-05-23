@@ -92,6 +92,8 @@ let stats = {
 };
 
 // ── Self-rating scores (persisted per DLC, survive reloads) ──────────────────
+// Used by the Questions Wheel. Scores are keyed by the current DLC name so
+// they persist across sessions and reloads.
 
 const SCORES_KEY = 'examiner_scores';
 
@@ -116,19 +118,6 @@ function setQuestionScore(qid, score) {
     } catch (e) {
         console.warn('Could not save scores:', e);
     }
-}
-
-function updateSidebarScore(qid) {
-    let item = document.getElementById('question-list-item-' + qid);
-    if (!item) return;
-    let score = getQuestionScore(qid);
-    if (score > 0) item.dataset.score = score;
-    else delete item.dataset.score;
-}
-
-function applyScoresToSidebar() {
-    if (!currentDlcData || !Array.isArray(currentDlcData.data)) return;
-    currentDlcData.data.forEach(q => updateSidebarScore(q.id));
 }
 
 // ── Session persistence ──────────────────────────────────────────────────────
@@ -237,8 +226,6 @@ function playGame(dlc, savedState) {
     if (savedState) {
         restoreSession(savedState, dlc.data);
     }
-
-    applyScoresToSidebar();
 
     nextQuestion();
 }
@@ -530,7 +517,6 @@ function reloadQuestionsFromContent(contents) {
 
     saveToRecent(newDlc.name || currentDlcName, contents);
     saveSession();
-    applyScoresToSidebar();
 
     let msg = 'Questions reloaded.';
     if (added > 0) msg += ' ' + added + ' new question(s) added.';

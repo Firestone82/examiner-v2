@@ -174,9 +174,13 @@ the future.
 Top section title:
 
 - Gear icon — configuration panel (wheel size, text size, spin time, show
-  hints toggle). All settings persist across sessions.
+  hints toggle, self-rating toggle). All settings persist across sessions.
 - Speaker icon — sound configuration (only sounds used in the wheel are
   shown).
+
+The wheel also remembers its current state per DLC — which questions are
+hidden, the section order, and collapsed groups — so reopening the same DLC
+restores where you left off.
 
 Sidebar header (Questions):
 
@@ -189,6 +193,9 @@ Inside the modal:
 
 - "Show hint" — reveals the markdown-rendered hints (only present if hints
   are enabled in the config and the question has any).
+- Self-rating stars (1-5) — when enabled in the config, rate how well you
+  know the question. The rating is saved per DLC between sessions and shown
+  as a small `★` badge next to the question in the sidebar.
 - "Close question" — closes the modal, keeps the question on the wheel.
 - "Hide question" — removes that section from the wheel.
 
