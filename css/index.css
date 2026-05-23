@@ -311,6 +311,34 @@ p.answer.notselected:hover {
     top: 0;
 }
 
+/* On the side-by-side layout, cap the sidebar to the viewport height and let
+   the question list scroll internally so the footer/legend stays visible. */
+@media (min-width: 1200px) {
+    .sidebar {
+        max-height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .sidebar > .section-title,
+    .sidebar > .timer,
+    .sidebar > .question-search-bar,
+    .sidebar > .wheel-search-bar,
+    .sidebar > .legend,
+    .sidebar > .wheel-legend,
+    .sidebar > .finish-exam-btn {
+        flex-shrink: 0;
+    }
+
+    .question-list,
+    .wheel-question-list {
+        flex: 1 1 auto;
+        min-height: 0;
+        max-height: none;
+        overflow-y: auto;
+    }
+}
+
 #answersHolder {
     position: sticky;
     bottom: 0;
