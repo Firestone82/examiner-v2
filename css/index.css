@@ -1747,11 +1747,12 @@ p.answer.dismissed {
 }
 
 .score-star {
-    color: #4a4a4a;
+    position: relative;
+    display: inline-block;
     font-size: 1.5rem;
     line-height: 1;
     cursor: pointer;
-    transition: color 0.1s, transform 0.1s;
+    transition: transform 0.1s;
     user-select: none;
 }
 
@@ -1759,8 +1760,19 @@ p.answer.dismissed {
     transform: scale(1.15);
 }
 
-.score-star.filled {
+.score-star-bg {
+    color: #4a4a4a;
+}
+
+.score-star-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    overflow: hidden;
+    white-space: nowrap;
     color: #ffb300;
+    pointer-events: none;
 }
 
 .score-clear {

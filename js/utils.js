@@ -340,10 +340,11 @@ function setScoringEnabled(enabled) {
 }
 
 /**
- * @brief Builds the 1-5 star self-rating controls into `parent`.
- *        Shared by the prompter question view and the wheel question modal.
- *        onChange(newScore) runs after every change so callers can refresh
- *        dependent UI such as sidebar badges.
+ * @brief Builds the 0.5-5 star self-rating controls into `parent`.
+ *        Used by the wheel question modal. Clicking the left half of a star
+ *        sets a half rating (e.g. 2.5), the right half a whole one (e.g. 3).
+ *        Clicking the current value again clears it. onChange(newScore) runs
+ *        after every change so callers can refresh dependent UI.
  */
 function populateScoreWidget(parent, qid, onChange) {
     let label = document.createElement('span');
@@ -356,11 +357,30 @@ function populateScoreWidget(parent, qid, onChange) {
     for (let i = 1; i <= 5; i++) {
         let star = document.createElement('span');
         star.className = 'score-star';
-        star.textContent = '★';
-        star.title = i + ' / 5';
-        star.onmouseenter = function () { paintStars(stars, i); };
-        star.onclick = function () {
-            let newScore = (getQuestionScore(qid) === i) ? 0 : i;
+        star.dataset.index = i;
+
+        let bg = document.createElement('span');
+        bg.className = 'score-star-bg';
+        bg.textContent = '★';
+        let fill = document.createElement('span');
+        fill.className = 'score-star-fill';
+        fill.textContent = '★';
+        star.appendChild(bg);
+        star.appendChild(fill);
+
+        // Left half of the glyph → i - 0.5, right half → i.
+        let valueAt = function (e) {
+            let rect = star.getBoundingClientRect();
+            return (e.clientX - rect.left) < rect.width / 2 ? i - 0.5 : i;
+        };
+        star.onmousemove = function (e) {
+            let v = valueAt(e);
+            star.title = v + ' / 5';
+            paintStars(stars, v);
+        };
+        star.onclick = function (e) {
+            let v = valueAt(e);
+            let newScore = (getQuestionScore(qid) === v) ? 0 : v;
             setQuestionScore(qid, newScore);
             paintStars(stars, newScore);
             playSound(newScore > 0 ? 'select' : 'deselect');
@@ -387,7 +407,12 @@ function populateScoreWidget(parent, qid, onChange) {
 }
 
 function paintStars(container, score) {
-    container.querySelectorAll('.score-star').forEach((s, idx) => s.classList.toggle('filled', (idx + 1) <= score));
+    container.querySelectorAll('.score-star').forEach(function (star) {
+        let idx = parseInt(star.dataset.index, 10);
+        let frac = Math.max(0, Math.min(1, score - (idx - 1)));
+        let fill = star.querySelector('.score-star-fill');
+        if (fill) fill.style.width = (frac * 100) + '%';
+    });
 }
 
 // ── Sound system ──────────────────────────────────────────────────────────────
