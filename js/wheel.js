@@ -34,6 +34,35 @@ function clearWheelState(name) {
     }
 }
 
+// True only when the saved state differs from a fresh wheel — i.e. the user
+// hid a question, collapsed a group or shuffled the order. A wheel that was
+// merely opened (and so persisted its default layout) is not "meaningful" and
+// should not trigger the continue/reset prompt.
+function isMeaningfulWheelState(saved, questions) {
+    if (!saved) return false;
+    if (Array.isArray(saved.hidden) && saved.hidden.length > 0) return true;
+    if (Array.isArray(saved.collapsed) && saved.collapsed.length > 0) return true;
+    if (Array.isArray(saved.order) && Array.isArray(questions)) {
+        let orig = questions.map(q => q.id);
+        if (saved.order.length !== orig.length) return true;
+        for (let i = 0; i < orig.length; i++) {
+            if (saved.order[i] !== orig[i]) return true;
+        }
+    }
+    return false;
+}
+
+// Leaving the wheel discards its saved state (after confirmation) and returns
+// to the start screen. A plain browser refresh keeps the state instead.
+function leaveWheel() {
+    showConfirmscreen('wheelView',
+        'Are you sure you want to leave?<br>The wheel will reset.',
+        function () {
+            clearWheelState(typeof currentDlcName === 'string' ? currentDlcName : null);
+            window.location.reload();
+        });
+}
+
 const WHEEL_DEFAULT_PREFS = {
     size: 100,
     textScale: 50,

@@ -52,6 +52,23 @@ function loadQuestions(contents, fileName, skipSessionCheck) {
 
     console.log("Loaded " + questions["name"] + " dlc");
 
+    if (!skipSessionCheck && isWheelDlc(questions)) {
+        let savedWheel = loadWheelState(currentDlcName);
+        if (isMeaningfulWheelState(savedWheel, questions.data)) {
+            showConfirmscreen("title",
+                "Continue previous attempt?<br><em>" + currentDlcName + "</em>",
+                function () { playGame(questions); }
+            );
+            document.getElementById("cancelButton").onclick = function () {
+                document.getElementById("confirmScreen").hidden = true;
+                document.getElementById("title").hidden = false;
+                clearWheelState(currentDlcName);
+                loadQuestions(contents, fileName, true);
+            };
+            return;
+        }
+    }
+
     if (!skipSessionCheck && !isWheelDlc(questions)) {
         let saved = getSavedSession();
         if (saved && saved.dlcName === currentDlcName) {
