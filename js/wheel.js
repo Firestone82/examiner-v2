@@ -922,6 +922,17 @@ class QuestionsWheel {
         toggle.className = 'wheel-question-toggle';
         toggle.textContent = isHidden ? '✕' : '✓';
 
+        let eye = document.createElement('button');
+        eye.className = 'wheel-question-eye';
+        eye.title = 'Show this question';
+        eye.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+        eye.onclick = (e) => {
+            e.stopPropagation();
+            if (this.spinning) return;
+            playSound('navigate');
+            this.showQuestionModal(question);
+        };
+
         item.appendChild(dot);
         item.appendChild(titleEl);
 
@@ -936,6 +947,7 @@ class QuestionsWheel {
             }
         }
 
+        item.appendChild(eye);
         item.appendChild(toggle);
 
         // Hover tooltip shows the long question text (the title in the row
