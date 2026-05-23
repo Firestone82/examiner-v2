@@ -311,6 +311,34 @@ p.answer.notselected:hover {
     top: 0;
 }
 
+/* On the side-by-side layout, cap the sidebar to the viewport height and let
+   the question list scroll internally so the footer/legend stays visible. */
+@media (min-width: 1200px) {
+    .sidebar {
+        max-height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .sidebar > .section-title,
+    .sidebar > .timer,
+    .sidebar > .question-search-bar,
+    .sidebar > .wheel-search-bar,
+    .sidebar > .legend,
+    .sidebar > .wheel-legend,
+    .sidebar > .finish-exam-btn {
+        flex-shrink: 0;
+    }
+
+    .question-list,
+    .wheel-question-list {
+        flex: 1 1 auto;
+        min-height: 0;
+        max-height: none;
+        overflow-y: auto;
+    }
+}
+
 #answersHolder {
     position: sticky;
     bottom: 0;
@@ -1725,3 +1753,84 @@ p.answer.dismissed {
     text-align: left;
 }
 
+
+/* ── Self-rating (1-5 stars) — wheel only ─────────────────────────────────── */
+
+.score-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+.score-label {
+    color: #aaa;
+    font-size: 0.9rem;
+}
+
+.score-stars {
+    display: inline-flex;
+    gap: 0.15rem;
+}
+
+.score-star {
+    position: relative;
+    display: inline-block;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: transform 0.1s;
+    user-select: none;
+}
+
+.score-star:hover {
+    transform: scale(1.15);
+}
+
+.score-star-bg {
+    color: #4a4a4a;
+}
+
+.score-star-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    color: #ffb300;
+    pointer-events: none;
+}
+
+.score-clear {
+    background: none;
+    border: 1px solid #444;
+    color: #888;
+    font-size: 0.75rem;
+    padding: 1px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.score-clear:hover {
+    color: #fff;
+    border-color: #888;
+}
+
+/* Self-rating inside the wheel modal */
+.wheel-modal-score {
+    margin-top: 0.9rem;
+    padding-top: 0.8rem;
+    border-top: 1px solid #2e2e2e;
+}
+
+/* Score badge on wheel sidebar items */
+.wheel-question-score {
+    flex-shrink: 0;
+    color: #ffb300;
+    font-size: 0.72rem;
+    font-weight: bold;
+    white-space: nowrap;
+}

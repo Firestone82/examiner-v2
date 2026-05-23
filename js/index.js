@@ -52,6 +52,23 @@ function loadQuestions(contents, fileName, skipSessionCheck) {
 
     console.log("Loaded " + questions["name"] + " dlc");
 
+    if (!skipSessionCheck && isWheelDlc(questions)) {
+        let savedWheel = loadWheelState(currentDlcName);
+        if (isMeaningfulWheelState(savedWheel, questions.data)) {
+            showConfirmscreen("title",
+                "Continue previous attempt?<br><em>" + currentDlcName + "</em>",
+                function () { playGame(questions); }
+            );
+            document.getElementById("cancelButton").onclick = function () {
+                document.getElementById("confirmScreen").hidden = true;
+                document.getElementById("title").hidden = false;
+                clearWheelState(currentDlcName);
+                loadQuestions(contents, fileName, true);
+            };
+            return;
+        }
+    }
+
     if (!skipSessionCheck && !isWheelDlc(questions)) {
         let saved = getSavedSession();
         if (saved && saved.dlcName === currentDlcName) {
@@ -90,6 +107,35 @@ let stats = {
     answerTimes: [],
     questionWrongCounts: {},
 };
+
+// ── Self-rating scores (persisted per DLC, survive reloads) ──────────────────
+// Used by the Questions Wheel. Scores are keyed by the current DLC name so
+// they persist across sessions and reloads.
+
+const SCORES_KEY = 'examiner_scores';
+
+function getAllScores() {
+    try {
+        return JSON.parse(localStorage.getItem(SCORES_KEY)) || {};
+    } catch { return {}; }
+}
+
+function getQuestionScore(qid) {
+    let dlcScores = getAllScores()[currentDlcName];
+    return (dlcScores && dlcScores[qid]) || 0;
+}
+
+function setQuestionScore(qid, score) {
+    let all = getAllScores();
+    if (!all[currentDlcName]) all[currentDlcName] = {};
+    if (score > 0) all[currentDlcName][qid] = score;
+    else delete all[currentDlcName][qid];
+    try {
+        localStorage.setItem(SCORES_KEY, JSON.stringify(all));
+    } catch (e) {
+        console.warn('Could not save scores:', e);
+    }
+}
 
 // ── Session persistence ──────────────────────────────────────────────────────
 
@@ -557,6 +603,20 @@ function loadFromRecent(index) {
     loadQuestions(recent[index].content, recent[index].name);
 }
 
+// Whether a recent file has resumable progress: an in-progress prompter
+// session, or a meaningful wheel state (hidden questions, collapsed groups
+// or a shuffled order).
+function hasSavedProgress(file, savedSession) {
+    if (savedSession && savedSession.dlcName === file.name) return true;
+    let savedWheel = loadWheelState(file.name);
+    if (savedWheel) {
+        let data = null;
+        try { data = JSON.parse(file.content).data; } catch {}
+        if (isMeaningfulWheelState(savedWheel, data)) return true;
+    }
+    return false;
+}
+
 function renderRecentFiles() {
     let panel = document.getElementById('recentFilesPanel');
     if (!panel) return;
@@ -597,7 +657,7 @@ function renderRecentFiles() {
 
         item.appendChild(nameSpan);
 
-        if (savedSession && savedSession.dlcName === file.name) {
+        if (hasSavedProgress(file, savedSession)) {
             let tag = document.createElement('span');
             tag.className = 'recent-file-tag';
             tag.textContent = 'In Progress';

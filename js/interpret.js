@@ -21,7 +21,6 @@ function interpretQuestion(question){
             alert("Error: unknown question type");
             break;
         }
-
 }
 
 

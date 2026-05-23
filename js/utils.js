@@ -327,6 +327,94 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+// ── Self-rating feature (off by default) ─────────────────────────────────────
+
+const SCORING_PREF_KEY = 'examiner_scoring_enabled';
+
+function isScoringEnabled() {
+    return localStorage.getItem(SCORING_PREF_KEY) === 'true';
+}
+
+function setScoringEnabled(enabled) {
+    try { localStorage.setItem(SCORING_PREF_KEY, enabled ? 'true' : 'false'); } catch {}
+}
+
+/**
+ * @brief Builds the 0.5-5 star self-rating controls into `parent`.
+ *        Used by the wheel question modal. Clicking the left half of a star
+ *        sets a half rating (e.g. 2.5), the right half a whole one (e.g. 3).
+ *        Clicking the current value again clears it. onChange(newScore) runs
+ *        after every change so callers can refresh dependent UI.
+ */
+function populateScoreWidget(parent, qid, onChange) {
+    let label = document.createElement('span');
+    label.className = 'score-label';
+    label.textContent = 'How well do you know this?';
+    parent.appendChild(label);
+
+    let stars = document.createElement('div');
+    stars.className = 'score-stars';
+    for (let i = 1; i <= 5; i++) {
+        let star = document.createElement('span');
+        star.className = 'score-star';
+        star.dataset.index = i;
+
+        let bg = document.createElement('span');
+        bg.className = 'score-star-bg';
+        bg.textContent = '★';
+        let fill = document.createElement('span');
+        fill.className = 'score-star-fill';
+        fill.textContent = '★';
+        star.appendChild(bg);
+        star.appendChild(fill);
+
+        // Left half of the glyph → i - 0.5, right half → i.
+        let valueAt = function (e) {
+            let rect = star.getBoundingClientRect();
+            return (e.clientX - rect.left) < rect.width / 2 ? i - 0.5 : i;
+        };
+        star.onmousemove = function (e) {
+            let v = valueAt(e);
+            star.title = v + ' / 5';
+            paintStars(stars, v);
+        };
+        star.onclick = function (e) {
+            let v = valueAt(e);
+            let newScore = (getQuestionScore(qid) === v) ? 0 : v;
+            setQuestionScore(qid, newScore);
+            paintStars(stars, newScore);
+            playSound(newScore > 0 ? 'select' : 'deselect');
+            if (onChange) onChange(newScore);
+        };
+        stars.appendChild(star);
+    }
+    stars.onmouseleave = function () { paintStars(stars, getQuestionScore(qid)); };
+    paintStars(stars, getQuestionScore(qid));
+    parent.appendChild(stars);
+
+    let clear = document.createElement('button');
+    clear.type = 'button';
+    clear.className = 'score-clear';
+    clear.textContent = 'Clear';
+    clear.title = 'Clear rating';
+    clear.onclick = function () {
+        setQuestionScore(qid, 0);
+        paintStars(stars, 0);
+        playSound('deselect');
+        if (onChange) onChange(0);
+    };
+    parent.appendChild(clear);
+}
+
+function paintStars(container, score) {
+    container.querySelectorAll('.score-star').forEach(function (star) {
+        let idx = parseInt(star.dataset.index, 10);
+        let frac = Math.max(0, Math.min(1, score - (idx - 1)));
+        let fill = star.querySelector('.score-star-fill');
+        if (fill) fill.style.width = (frac * 100) + '%';
+    });
+}
+
 // ── Sound system ──────────────────────────────────────────────────────────────
 
 const UI_SOUNDS   = ['select', 'dismiss', 'pause', 'show', 'navigate', 'next'];
