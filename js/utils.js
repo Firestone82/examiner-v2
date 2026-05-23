@@ -87,8 +87,6 @@ function hideUnmarkButton() {
 function cleanUpHolders() {
     document.getElementById("questionHolder").innerHTML = "";
     document.getElementById("answersHolder").innerHTML = "";
-    let scoreRow = document.getElementById("scoreRow");
-    if (scoreRow) scoreRow.innerHTML = "";
     document.getElementById("md-holder").src = "";
     document.getElementById("md-holder").hidden = true;
 }
@@ -240,33 +238,6 @@ function showStats(statsData, questions) {
         html += `</tbody></table></div>`;
     }
 
-    let scoreEntries = [];
-    if (questions && typeof getQuestionScore === 'function') {
-        questions.forEach(q => {
-            let s = getQuestionScore(q.id);
-            if (s > 0) scoreEntries.push([q.id, s, q]);
-        });
-        scoreEntries.sort((a, b) => a[1] - b[1]); // weakest first
-    }
-
-    if (scoreEntries.length > 0) {
-        html += `<p class="stats-section-title">Self-Rated Knowledge</p>
-        <div class="stats-table-wrapper">
-        <table class="stats-table">
-            <thead><tr><th>Question</th><th style="text-align:center;">Rating</th></tr></thead>
-            <tbody>`;
-        for (let [id, score, q] of scoreEntries) {
-            let text = (q && q.question && q.question.type === 'text')
-                ? (q.question.content.length > 90 ? q.question.content.substring(0, 90) + '…' : q.question.content)
-                : 'Question ID ' + id;
-            let safeText = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-            let stars = '★'.repeat(score) + '☆'.repeat(5 - score);
-            html += `<tr class="stats-table-row" data-qid="${id}" onclick="showQuestionModal('${id}')">` +
-                `<td>${safeText}</td><td class="stats-stars">${stars}</td></tr>`;
-        }
-        html += `</tbody></table></div>`;
-    }
-
     holder.innerHTML = html;
 }
 
@@ -355,6 +326,69 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.target === this) this.hidden = true;
     });
 });
+
+// ── Self-rating feature (off by default) ─────────────────────────────────────
+
+const SCORING_PREF_KEY = 'examiner_scoring_enabled';
+
+function isScoringEnabled() {
+    return localStorage.getItem(SCORING_PREF_KEY) === 'true';
+}
+
+function setScoringEnabled(enabled) {
+    try { localStorage.setItem(SCORING_PREF_KEY, enabled ? 'true' : 'false'); } catch {}
+}
+
+/**
+ * @brief Builds the 1-5 star self-rating controls into `parent`.
+ *        Shared by the prompter question view and the wheel question modal.
+ *        onChange(newScore) runs after every change so callers can refresh
+ *        dependent UI such as sidebar badges.
+ */
+function populateScoreWidget(parent, qid, onChange) {
+    let label = document.createElement('span');
+    label.className = 'score-label';
+    label.textContent = 'How well do you know this?';
+    parent.appendChild(label);
+
+    let stars = document.createElement('div');
+    stars.className = 'score-stars';
+    for (let i = 1; i <= 5; i++) {
+        let star = document.createElement('span');
+        star.className = 'score-star';
+        star.textContent = '★';
+        star.title = i + ' / 5';
+        star.onmouseenter = function () { paintStars(stars, i); };
+        star.onclick = function () {
+            let newScore = (getQuestionScore(qid) === i) ? 0 : i;
+            setQuestionScore(qid, newScore);
+            paintStars(stars, newScore);
+            playSound(newScore > 0 ? 'select' : 'deselect');
+            if (onChange) onChange(newScore);
+        };
+        stars.appendChild(star);
+    }
+    stars.onmouseleave = function () { paintStars(stars, getQuestionScore(qid)); };
+    paintStars(stars, getQuestionScore(qid));
+    parent.appendChild(stars);
+
+    let clear = document.createElement('button');
+    clear.type = 'button';
+    clear.className = 'score-clear';
+    clear.textContent = 'Clear';
+    clear.title = 'Clear rating';
+    clear.onclick = function () {
+        setQuestionScore(qid, 0);
+        paintStars(stars, 0);
+        playSound('deselect');
+        if (onChange) onChange(0);
+    };
+    parent.appendChild(clear);
+}
+
+function paintStars(container, score) {
+    container.querySelectorAll('.score-star').forEach((s, idx) => s.classList.toggle('filled', (idx + 1) <= score));
+}
 
 // ── Sound system ──────────────────────────────────────────────────────────────
 

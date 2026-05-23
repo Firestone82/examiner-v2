@@ -1726,7 +1726,7 @@ p.answer.dismissed {
 }
 
 
-/* ── Self-rating (1-5 stars) ──────────────────────────────────────────────── */
+/* ── Self-rating (1-5 stars) — wheel only ─────────────────────────────────── */
 
 .score-row {
     display: flex;
@@ -1734,12 +1734,6 @@ p.answer.dismissed {
     justify-content: center;
     flex-wrap: wrap;
     gap: 0.6rem;
-    margin: 0.6rem 0 0.2rem;
-    min-height: 1.6rem;
-}
-
-.score-row:empty {
-    display: none;
 }
 
 .score-label {
@@ -1785,30 +1779,18 @@ p.answer.dismissed {
     border-color: #888;
 }
 
-/* Sidebar score badge */
-.question-list div[data-score]::after {
-    content: attr(data-score);
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    background: #ffb300;
-    color: #222;
-    font-size: 0.62rem;
-    font-weight: bold;
-    line-height: 1;
-    padding: 1px 3px;
-    border-top-left-radius: 4px;
-    z-index: 2;
+/* Self-rating inside the wheel modal */
+.wheel-modal-score {
+    margin-top: 0.9rem;
+    padding-top: 0.8rem;
+    border-top: 1px solid #2e2e2e;
 }
 
-.legend .rated {
-    background: #ffb300;
-}
-
-/* End-screen self-rating table */
-.stats-stars {
-    text-align: center;
+/* Score badge on wheel sidebar items */
+.wheel-question-score {
+    flex-shrink: 0;
     color: #ffb300;
-    letter-spacing: 0.1em;
+    font-size: 0.72rem;
+    font-weight: bold;
     white-space: nowrap;
 }

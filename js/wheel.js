@@ -5,6 +5,34 @@
 const WHEEL_SVG_NS = 'http://www.w3.org/2000/svg';
 const WHEEL_DEFAULT_COLOR = '#888888';
 const WHEEL_PREFS_KEY = 'examiner_wheel_prefs';
+// Per-DLC wheel state (hidden questions, section order, collapsed groups).
+// Mirrors the prompter's session persistence so a reload restores the wheel.
+const WHEEL_STATE_KEY = 'examiner_wheel_state';
+
+function loadWheelState(name) {
+    if (!name) return null;
+    try {
+        return (JSON.parse(localStorage.getItem(WHEEL_STATE_KEY)) || {})[name] || null;
+    } catch { return null; }
+}
+
+function saveWheelState(name, state) {
+    if (!name) return;
+    let all = {};
+    try { all = JSON.parse(localStorage.getItem(WHEEL_STATE_KEY)) || {}; } catch {}
+    all[name] = state;
+    try { localStorage.setItem(WHEEL_STATE_KEY, JSON.stringify(all)); } catch {}
+}
+
+function clearWheelState(name) {
+    if (!name) return;
+    let all = {};
+    try { all = JSON.parse(localStorage.getItem(WHEEL_STATE_KEY)) || {}; } catch {}
+    if (name in all) {
+        delete all[name];
+        try { localStorage.setItem(WHEEL_STATE_KEY, JSON.stringify(all)); } catch {}
+    }
+}
 
 const WHEEL_DEFAULT_PREFS = {
     size: 100,
@@ -108,10 +136,46 @@ class QuestionsWheel {
         }
         this.timerInterval = null;
         this.timerStart = 0;
+
+        this.restoreState();
     }
 
     get active() {
         return this.wheelOrder.filter(q => !this.hidden.has(q.id));
+    }
+
+    // Name used to key persisted state (hidden/order) — same name the rest of
+    // the app uses for sessions, recent files and scores.
+    get stateName() {
+        return (typeof currentDlcName === 'string' && currentDlcName) ? currentDlcName : null;
+    }
+
+    restoreState() {
+        let saved = loadWheelState(this.stateName);
+        if (!saved) return;
+        if (Array.isArray(saved.hidden)) this.hidden = new Set(saved.hidden);
+        if (Array.isArray(saved.collapsed)) this.collapsedGroups = new Set(saved.collapsed);
+        if (Array.isArray(saved.order)) {
+            let byId = {};
+            this.questions.forEach(q => { byId[q.id] = q; });
+            let seen = new Set();
+            let restored = [];
+            saved.order.forEach(id => {
+                if (byId[id] && !seen.has(id)) { restored.push(byId[id]); seen.add(id); }
+            });
+            // Append any questions added since the state was saved.
+            this.questions.forEach(q => { if (!seen.has(q.id)) restored.push(q); });
+            if (restored.length) this.wheelOrder = restored;
+        }
+    }
+
+    persistState() {
+        if (!this.stateName) return;
+        saveWheelState(this.stateName, {
+            hidden: Array.from(this.hidden),
+            order: this.wheelOrder.map(q => q.id),
+            collapsed: Array.from(this.collapsedGroups),
+        });
     }
 
     attach() {
@@ -257,6 +321,20 @@ class QuestionsWheel {
             };
         }
 
+        let scoringSwitch = document.getElementById('wheelScoringSwitch');
+        let scoringRow = document.getElementById('wheelScoringRow');
+        let updateScoringSwitch = () => scoringSwitch && scoringSwitch.classList.toggle('on', isScoringEnabled());
+        updateScoringSwitch();
+        if (scoringRow) {
+            scoringRow.onclick = (e) => {
+                e.preventDefault();
+                setScoringEnabled(!isScoringEnabled());
+                updateScoringSwitch();
+                this.renderSidebar();
+                if (!document.getElementById('wheelModal').hidden) this.refreshModalScore();
+            };
+        }
+
         let outerSwitch = document.getElementById('wheelTextOuterSwitch');
         let outerRow = document.getElementById('wheelTextOuterRow');
         let updateOuterSwitch = () => outerSwitch && outerSwitch.classList.toggle('on', this.prefs.textOuter);
@@ -382,6 +460,7 @@ class QuestionsWheel {
         this.resetSpinner();
         this.renderWheel();
         this.updateSpinButton();
+        this.persistState();
         playSound('wheel-shuffle');
     }
 
@@ -475,6 +554,7 @@ class QuestionsWheel {
         this.renderWheel();
         this.renderSidebar();
         this.updateSpinButton();
+        this.persistState();
     }
 
     updateSpinButton() {
@@ -665,6 +745,7 @@ class QuestionsWheel {
     }
 
     renderSidebar() {
+        this.persistState();
         let list = document.getElementById('wheelQuestionList');
         list.innerHTML = '';
         let q = this.searchQuery;
@@ -813,6 +894,18 @@ class QuestionsWheel {
 
         item.appendChild(dot);
         item.appendChild(titleEl);
+
+        if (isScoringEnabled()) {
+            let score = getQuestionScore(question.id);
+            if (score > 0) {
+                let badge = document.createElement('span');
+                badge.className = 'wheel-question-score';
+                badge.textContent = '★' + score;
+                badge.title = score + ' / 5';
+                item.appendChild(badge);
+            }
+        }
+
         item.appendChild(openBtn);
         item.appendChild(toggle);
 
@@ -982,8 +1075,24 @@ class QuestionsWheel {
         }
 
         this.applyHintsButton();
+        this.refreshModalScore();
         modal.hidden = false;
         this.startTimer();
+    }
+
+    // Adds (or removes) the 1-5 star self-rating row in the open modal,
+    // reflecting the current feature toggle. Rating changes refresh the
+    // sidebar so its score badge stays in sync.
+    refreshModalScore() {
+        let body = document.getElementById('wheelModalBody');
+        if (!body) return;
+        let existing = body.querySelector('.wheel-modal-score');
+        if (existing) existing.remove();
+        if (!isScoringEnabled() || !this.selected) return;
+        let wrap = document.createElement('div');
+        wrap.className = 'score-row wheel-modal-score';
+        populateScoreWidget(wrap, this.selected.id, () => this.renderSidebar());
+        body.appendChild(wrap);
     }
 
     applyHintsButton() {
@@ -1042,6 +1151,9 @@ class QuestionsWheel {
         this.closeModal();
         this.resetSpinner();
         if (isLast) {
+            // Completed: drop the saved state so a fresh load starts with the
+            // full wheel rather than an empty one.
+            clearWheelState(this.stateName);
             playSound('finish');
             document.getElementById('wheelView').hidden = true;
             document.body.style.overflow = '';
