@@ -156,35 +156,28 @@ class QuestionsWheel {
                 this.questionGroups[q.id] = g;
             }
         });
-        // Visually collapse group sections in the sidebar when the pool is
-        // large enough that scrolling becomes annoying.
         this.collapsedGroups = new Set();
-        if (this.questions.length > 15) {
-            this.groups.forEach(g => this.collapsedGroups.add(g.name));
-            this.collapsedGroups.add('__ungrouped__');
-        }
         this.timerInterval = null;
         this.timerStart = 0;
 
         let hadSavedState = !!loadWheelState(this.stateName);
         this.restoreState();
-        // On a fresh open of a large grouped DLC, start with every section
-        // collapsed so the list stays manageable.
+        // On a fresh open of a large grouped DLC, collapse the named group
+        // sections (the Ungrouped section stays expanded) so the list stays
+        // manageable.
         if (!hadSavedState && this.questions.length > 15) {
             this.collapseAllSections();
         }
     }
 
-    // Collapses every group section (and the ungrouped bucket). No-op for
-    // DLCs that don't use groups, since there are no sections to collapse.
+    // Collapses every named group section, leaving the Ungrouped section
+    // expanded. No-op for DLCs that don't use groups, since there are no
+    // group sections to collapse.
     collapseAllSections() {
         let useGroups = this.groups.length > 0
             && this.questions.some(q => this.findGroup(this.questionGroups[q.id]));
         if (!useGroups) return;
         this.groups.forEach(g => this.collapsedGroups.add(g.name));
-        if (this.questions.some(q => !this.findGroup(this.questionGroups[q.id]))) {
-            this.collapsedGroups.add('__ungrouped__');
-        }
     }
 
     get active() {
