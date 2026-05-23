@@ -603,6 +603,20 @@ function loadFromRecent(index) {
     loadQuestions(recent[index].content, recent[index].name);
 }
 
+// Whether a recent file has resumable progress: an in-progress prompter
+// session, or a meaningful wheel state (hidden questions, collapsed groups
+// or a shuffled order).
+function hasSavedProgress(file, savedSession) {
+    if (savedSession && savedSession.dlcName === file.name) return true;
+    let savedWheel = loadWheelState(file.name);
+    if (savedWheel) {
+        let data = null;
+        try { data = JSON.parse(file.content).data; } catch {}
+        if (isMeaningfulWheelState(savedWheel, data)) return true;
+    }
+    return false;
+}
+
 function renderRecentFiles() {
     let panel = document.getElementById('recentFilesPanel');
     if (!panel) return;
@@ -643,7 +657,7 @@ function renderRecentFiles() {
 
         item.appendChild(nameSpan);
 
-        if (savedSession && savedSession.dlcName === file.name) {
+        if (hasSavedProgress(file, savedSession)) {
             let tag = document.createElement('span');
             tag.className = 'recent-file-tag';
             tag.textContent = 'In Progress';
