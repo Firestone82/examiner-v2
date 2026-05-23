@@ -1664,3 +1664,90 @@ p.answer.dismissed {
     text-align: left;
 }
 
+
+/* ── Self-rating (1-5 stars) ──────────────────────────────────────────────── */
+
+.score-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin: 0.6rem 0 0.2rem;
+    min-height: 1.6rem;
+}
+
+.score-row:empty {
+    display: none;
+}
+
+.score-label {
+    color: #aaa;
+    font-size: 0.9rem;
+}
+
+.score-stars {
+    display: inline-flex;
+    gap: 0.15rem;
+}
+
+.score-star {
+    color: #4a4a4a;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.1s, transform 0.1s;
+    user-select: none;
+}
+
+.score-star:hover {
+    transform: scale(1.15);
+}
+
+.score-star.filled {
+    color: #ffb300;
+}
+
+.score-clear {
+    background: none;
+    border: 1px solid #444;
+    color: #888;
+    font-size: 0.75rem;
+    padding: 1px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.score-clear:hover {
+    color: #fff;
+    border-color: #888;
+}
+
+/* Sidebar score badge */
+.question-list div[data-score]::after {
+    content: attr(data-score);
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    background: #ffb300;
+    color: #222;
+    font-size: 0.62rem;
+    font-weight: bold;
+    line-height: 1;
+    padding: 1px 3px;
+    border-top-left-radius: 4px;
+    z-index: 2;
+}
+
+.legend .rated {
+    background: #ffb300;
+}
+
+/* End-screen self-rating table */
+.stats-stars {
+    text-align: center;
+    color: #ffb300;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+}
