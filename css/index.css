@@ -1336,7 +1336,7 @@ p.answer.dismissed {
     border-radius: 0 0 4px 4px;
     min-width: 280px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-    padding: 0.3rem 0;
+    padding-top: 0.3rem;
 }
 
 .wheel-config-row {
@@ -1445,6 +1445,48 @@ p.answer.dismissed {
 
 .wheel-config-row[data-tooltip]:hover::after {
     opacity: 1;
+}
+
+.wheel-config-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin: 0.25rem 0.9rem;
+}
+
+.wheel-config-action {
+    flex: 1;
+    padding: 0.45rem 0.6rem;
+    background: #242424;
+    color: #ccc;
+    border: 1px solid #333;
+    border-radius: 4px;
+    font-size: 0.82rem;
+    font-family: inherit;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+@media (max-width: 600px) {
+    .wheel-config-actions {
+        flex-direction: column;
+    }
+}
+
+.wheel-config-action:hover {
+    background: #2e2e2e;
+    border-color: #444;
+}
+
+.wheel-config-action-danger {
+    color: #f0506e;
+    border-color: #5a2530;
+}
+
+.wheel-config-action-danger:hover {
+    background: #3a1a22;
+    border-color: #f0506e;
+    color: #ff6b85;
 }
 
 

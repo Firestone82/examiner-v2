@@ -137,6 +137,18 @@ function setQuestionScore(qid, score) {
     }
 }
 
+function clearAllScoresForDlc() {
+    let all = getAllScores();
+    if (currentDlcName && all[currentDlcName]) {
+        delete all[currentDlcName];
+        try {
+            localStorage.setItem(SCORES_KEY, JSON.stringify(all));
+        } catch (e) {
+            console.warn('Could not clear scores:', e);
+        }
+    }
+}
+
 // ── Session persistence ──────────────────────────────────────────────────────
 
 const SESSION_KEY = 'examiner_session';

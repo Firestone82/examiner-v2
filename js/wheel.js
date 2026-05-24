@@ -447,6 +447,28 @@ class QuestionsWheel {
             };
         }
 
+        let exportBtn = document.getElementById('wheelExportRatingsBtn');
+        if (exportBtn) {
+            exportBtn.onclick = () => this.exportRatings();
+        }
+
+        let eraseBtn = document.getElementById('wheelEraseRatingsBtn');
+        if (eraseBtn) {
+            eraseBtn.onclick = () => {
+                let panel = document.getElementById('wheelConfigPanel');
+                if (panel) panel.hidden = true;
+                showConfirmscreen('wheelView',
+                    'Erase all star ratings for<br><em>' + (currentDlcName || 'this DLC') + '</em>?<br>This cannot be undone.',
+                    () => {
+                        clearAllScoresForDlc();
+                        document.getElementById('wheelView').hidden = false;
+                        this.renderSidebar();
+                        if (!document.getElementById('wheelModal').hidden) this.refreshModalScore();
+                        playSound('deselect');
+                    });
+            };
+        }
+
         // Close config panel on outside click
         let configPanel = document.getElementById('wheelConfigPanel');
         let configBtn = document.getElementById('wheelConfigButton');
@@ -492,6 +514,71 @@ class QuestionsWheel {
         }
 
         this.render();
+    }
+
+    // Exports the user's star ratings for the current DLC as a CSV, with one
+    // row per rated question and its group, ordered by group then title.
+    exportRatings() {
+        let scores = getAllScores()[currentDlcName] || {};
+        let rated = this.questions.filter(q => (scores[q.id] || 0) > 0);
+        if (rated.length === 0) {
+            alert('No star ratings to export yet.');
+            return;
+        }
+
+        let titleOf = q => (q.question && q.question.title) || ('Question #' + q.id);
+        let groupNameOf = q => {
+            let g = this.findGroup(this.questionGroups[q.id]);
+            return g ? g.name : 'Ungrouped';
+        };
+
+        let groupOrder = {};
+        this.groups.forEach((g, i) => { groupOrder[g.name] = i; });
+        let orderIndex = name => (name in groupOrder ? groupOrder[name] : this.groups.length);
+
+        let sorted = rated.slice().sort((a, b) => {
+            let ga = groupNameOf(a), gb = groupNameOf(b);
+            let oa = orderIndex(ga), ob = orderIndex(gb);
+            if (oa !== ob) return oa - ob;
+            if (ga !== gb) return ga.localeCompare(gb);
+            return titleOf(a).localeCompare(titleOf(b));
+        });
+
+        let cell = v => String(v === undefined || v === null ? '' : v).replace(/[\r\n\t]+/g, ' ');
+        let headers = ['Group', 'ID', 'Question', 'Rating'];
+        let alignRight = [false, true, false, true];
+        let rows = sorted.map(q => [groupNameOf(q), q.id, titleOf(q), scores[q.id]].map(cell));
+
+        let widths = headers.map((h, i) =>
+            Math.max(h.length, ...rows.map(r => r[i].length)));
+        let pad = (c, i) => alignRight[i] ? c.padStart(widths[i]) : c.padEnd(widths[i]);
+        let sep = '+' + widths.map(w => '-'.repeat(w + 2)).join('+') + '+';
+        let fmtRow = cells => '| ' + cells.map(pad).join(' | ') + ' |';
+
+        let lines = [sep, fmtRow(headers), sep];
+        rows.forEach(r => lines.push(fmtRow(r)));
+        lines.push(sep);
+
+        let heading = 'Star ratings — ' + (currentDlcName || 'this DLC') +
+            '  (' + rows.length + ' rated)';
+        let table = heading + '\n\n' + lines.join('\n') + '\n';
+
+        let base = (typeof currentDlcName === 'string' && currentDlcName ? currentDlcName : 'examiner')
+            .replace(/\.[^.]+$/, '').replace(/[^\w\-]+/g, '_') || 'examiner';
+        this.downloadFile(base + '-ratings.txt', table, 'text/plain;charset=utf-8');
+        playSound('select');
+    }
+
+    downloadFile(filename, content, mime) {
+        let blob = new Blob([content], { type: mime });
+        let url = URL.createObjectURL(blob);
+        let a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
     shuffleWheel() {
