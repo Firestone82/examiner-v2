@@ -1336,7 +1336,7 @@ p.answer.dismissed {
     border-radius: 0 0 4px 4px;
     min-width: 280px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-    padding: 0.3rem 0;
+    padding-top: 0.3rem;
 }
 
 .wheel-config-row {
