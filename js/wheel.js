@@ -488,7 +488,7 @@ class QuestionsWheel {
 
         let showAllBtn = document.getElementById('wheelShowAllBtn');
         if (showAllBtn) {
-            showAllBtn.onclick = () => this.showAllQuestions();
+            showAllBtn.onclick = () => this.toggleAllQuestions();
         }
 
         this.render();
@@ -504,13 +504,26 @@ class QuestionsWheel {
         playSound('wheel-shuffle');
     }
 
-    showAllQuestions() {
+    toggleAllQuestions() {
         if (this.spinning) return;
-        if (this.hidden.size === 0) return;
-        this.hidden.clear();
+        if (this.questions.length === 0) return;
+        let anyVisible = this.questions.some(q => !this.hidden.has(q.id));
+        if (anyVisible) {
+            this.questions.forEach(q => this.hidden.add(q.id));
+        } else {
+            this.hidden.clear();
+        }
         this.resetSpinner();
         this.render();
-        playSound('select');
+        playSound(anyVisible ? 'deselect' : 'select');
+    }
+
+    updateShowAllBtn() {
+        let btn = document.getElementById('wheelShowAllBtn');
+        if (!btn) return;
+        let anyVisible = this.questions.some(q => !this.hidden.has(q.id));
+        btn.textContent = anyVisible ? '⦸' : '⟳';
+        btn.title = anyVisible ? 'Hide all questions' : 'Show all questions';
     }
 
     applySize() {
@@ -594,6 +607,7 @@ class QuestionsWheel {
         this.renderWheel();
         this.renderSidebar();
         this.updateSpinButton();
+        this.updateShowAllBtn();
         this.persistState();
     }
 
@@ -860,6 +874,14 @@ class QuestionsWheel {
                     this.render();
                     playSound(allHidden ? 'select' : 'deselect');
                 };
+
+                let shownCount = items.reduce((n, q) => n + (this.hidden.has(q.id) ? 0 : 1), 0);
+                let count = document.createElement('span');
+                count.className = 'wheel-group-count';
+                count.textContent = shownCount + '/' + items.length;
+                count.title = shownCount + ' shown, ' + (items.length - shownCount) + ' hidden';
+                header.appendChild(count);
+
                 header.appendChild(toggleBtn);
                 list.appendChild(header);
 

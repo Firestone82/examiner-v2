@@ -1733,6 +1733,16 @@ p.answer.dismissed {
     color: white;
 }
 
+.wheel-group-count {
+    flex-shrink: 0;
+    margin-right: 0.4rem;
+    color: #888;
+    font-size: 0.7rem;
+    font-weight: bold;
+    letter-spacing: 0;
+    font-variant-numeric: tabular-nums;
+}
+
 .wheel-group-header.collapsed {
     margin-bottom: 0.5rem;
 }
