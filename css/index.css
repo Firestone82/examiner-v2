@@ -1447,6 +1447,38 @@ p.answer.dismissed {
     opacity: 1;
 }
 
+.wheel-config-action {
+    display: block;
+    width: calc(100% - 1.8rem);
+    margin: 0.25rem 0.9rem;
+    padding: 0.45rem 0.6rem;
+    background: #242424;
+    color: #ccc;
+    border: 1px solid #333;
+    border-radius: 4px;
+    font-size: 0.82rem;
+    font-family: inherit;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.wheel-config-action:hover {
+    background: #2e2e2e;
+    border-color: #444;
+}
+
+.wheel-config-action-danger {
+    color: #f0506e;
+    border-color: #5a2530;
+}
+
+.wheel-config-action-danger:hover {
+    background: #3a1a22;
+    border-color: #f0506e;
+    color: #ff6b85;
+}
+
 
 /* Markdown hint rendering – tame the default md.css sizing for compact display */
 .wheel-modal-answer zero-md {
