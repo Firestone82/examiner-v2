@@ -544,19 +544,28 @@ class QuestionsWheel {
             return titleOf(a).localeCompare(titleOf(b));
         });
 
-        let esc = v => {
-            let s = String(v === undefined || v === null ? '' : v);
-            return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-        };
-        let lines = [['Group', 'Question ID', 'Question', 'Rating'].join(',')];
-        sorted.forEach(q => {
-            lines.push([groupNameOf(q), q.id, titleOf(q), scores[q.id]].map(esc).join(','));
-        });
-        let csv = '﻿' + lines.join('\r\n');
+        let cell = v => String(v === undefined || v === null ? '' : v).replace(/[\r\n\t]+/g, ' ');
+        let headers = ['Group', 'ID', 'Question', 'Rating'];
+        let alignRight = [false, true, false, true];
+        let rows = sorted.map(q => [groupNameOf(q), q.id, titleOf(q), scores[q.id]].map(cell));
+
+        let widths = headers.map((h, i) =>
+            Math.max(h.length, ...rows.map(r => r[i].length)));
+        let pad = (c, i) => alignRight[i] ? c.padStart(widths[i]) : c.padEnd(widths[i]);
+        let sep = '+' + widths.map(w => '-'.repeat(w + 2)).join('+') + '+';
+        let fmtRow = cells => '| ' + cells.map(pad).join(' | ') + ' |';
+
+        let lines = [sep, fmtRow(headers), sep];
+        rows.forEach(r => lines.push(fmtRow(r)));
+        lines.push(sep);
+
+        let heading = 'Star ratings — ' + (currentDlcName || 'this DLC') +
+            '  (' + rows.length + ' rated)';
+        let table = heading + '\n\n' + lines.join('\n') + '\n';
 
         let base = (typeof currentDlcName === 'string' && currentDlcName ? currentDlcName : 'examiner')
             .replace(/\.[^.]+$/, '').replace(/[^\w\-]+/g, '_') || 'examiner';
-        this.downloadFile(base + '-ratings.csv', csv, 'text/csv;charset=utf-8');
+        this.downloadFile(base + '-ratings.txt', table, 'text/plain;charset=utf-8');
         playSound('select');
     }
 

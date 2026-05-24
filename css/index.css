@@ -1447,10 +1447,14 @@ p.answer.dismissed {
     opacity: 1;
 }
 
-.wheel-config-action {
-    display: block;
-    width: calc(100% - 1.8rem);
+.wheel-config-actions {
+    display: flex;
+    gap: 0.5rem;
     margin: 0.25rem 0.9rem;
+}
+
+.wheel-config-action {
+    flex: 1;
     padding: 0.45rem 0.6rem;
     background: #242424;
     color: #ccc;
@@ -1461,6 +1465,12 @@ p.answer.dismissed {
     cursor: pointer;
     text-align: center;
     transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+@media (max-width: 600px) {
+    .wheel-config-actions {
+        flex-direction: column;
+    }
 }
 
 .wheel-config-action:hover {
