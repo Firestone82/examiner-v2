@@ -232,8 +232,11 @@
                             <div class="wheel-members-config-list" id="wheelMembersConfigList"></div>
                         </div>
                         <div class="wheel-members-manage-actions">
-                            <button type="button" id="wheelMembersShowPendingBtn" class="wheel-members-action-btn" title="Show every question that an enabled member still hasn't answered">Show unanswered</button>
-                            <button type="button" id="wheelMembersHideAnsweredBtn" class="wheel-members-action-btn" title="Hide every question that all enabled members have already answered">Hide answered</button>
+                            <div class="wheel-members-action-row">
+                                <button type="button" id="wheelMembersShowPendingBtn" class="wheel-members-action-btn" title="Show every question that an enabled member still hasn't answered">Show unanswered</button>
+                                <button type="button" id="wheelMembersHideAnsweredBtn" class="wheel-members-action-btn" title="Hide every question that all enabled members have already answered">Hide answered</button>
+                            </div>
+                            <button type="button" id="wheelMembersUnansweredBtn" class="wheel-members-action-btn" title="Show only questions that nobody has answered yet (hide the rest)">Only fully unanswered</button>
                         </div>
                     </div>
                     <button class="sound-toggle-btn wheel-sound-btn" id="wheelSoundButton" data-panel="wheelSoundPanel" onclick="toggleSound(event)" title="Sounds"></button>

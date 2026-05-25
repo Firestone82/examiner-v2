@@ -595,6 +595,17 @@ class QuestionsWheel {
                     this.hideFullyAnsweredQuestions();
                 });
         };
+        let unansweredBtn = document.getElementById('wheelMembersUnansweredBtn');
+        if (unansweredBtn) unansweredBtn.onclick = () => {
+            let panel = document.getElementById('wheelMembersManagePanel');
+            if (panel) panel.hidden = true;
+            showConfirmscreen('wheelView',
+                'Show only the questions nobody has answered yet?<br>This changes which questions appear on the wheel.',
+                () => {
+                    document.getElementById('wheelView').hidden = false;
+                    this.showOnlyUnansweredByAnyone();
+                });
+        };
 
         let rollBtn = document.getElementById('wheelMembersRollBtn');
         if (rollBtn) rollBtn.onclick = () => this.rollMember();
@@ -1071,6 +1082,26 @@ class QuestionsWheel {
         if (changed) this.resetSpinner();
         this.render();
         playSound(changed ? 'deselect' : 'select');
+    }
+
+    // Leave only the questions that nobody has answered yet on the wheel: show
+    // those with zero answers and hide every question with at least one answer.
+    showOnlyUnansweredByAnyone() {
+        if (this.spinning) return;
+        let changed = false;
+        this.questions.forEach(q => {
+            let answeredByAny = this.answeredIds(q.id).length > 0;
+            if (answeredByAny && !this.hidden.has(q.id)) {
+                this.hidden.add(q.id);
+                changed = true;
+            } else if (!answeredByAny && this.hidden.has(q.id)) {
+                this.hidden.delete(q.id);
+                changed = true;
+            }
+        });
+        if (changed) this.resetSpinner();
+        this.render();
+        playSound(changed ? 'select' : 'deselect');
     }
 
     unansweredMembers(qid) {

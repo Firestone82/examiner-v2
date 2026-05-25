@@ -2067,6 +2067,16 @@ p.answer.dismissed {
     padding: 0 0.9rem 0.7rem;
 }
 
+.wheel-members-action-row {
+    display: flex;
+    gap: 0.35rem;
+}
+
+.wheel-members-action-row .wheel-members-action-btn {
+    flex: 1;
+    min-width: 0;
+}
+
 .wheel-members-action-btn {
     background: #242424;
     color: #ccc;
