@@ -349,11 +349,42 @@ function setScoringEnabled(enabled) {
 function populateScoreWidget(parent, qid, onChange) {
     let label = document.createElement('span');
     label.className = 'score-label';
-    label.textContent = 'How well do you know this?';
+    label.textContent = 'Question difficulty';
     parent.appendChild(label);
 
     let stars = document.createElement('div');
     stars.className = 'score-stars';
+
+    let note = document.createElement('span');
+    note.className = 'score-note';
+
+    let clear = document.createElement('button');
+    clear.type = 'button';
+    clear.className = 'score-clear';
+    clear.textContent = 'Clear';
+    clear.title = 'Clear manual rating (revert to member average)';
+
+    // Repaints the stars/note to reflect the current state: a manual override
+    // shows as a solid rating, otherwise the member average (faded) is shown.
+    let refresh = function () {
+        let manual = getQuestionScore(qid);
+        let avg = getMemberAverageScore(qid);
+        let count = getMemberScoreCount(qid);
+        let effective = manual > 0 ? manual : avg;
+        paintStars(stars, effective);
+        stars.classList.toggle('is-average', manual === 0 && avg > 0);
+        if (manual > 0) {
+            note.textContent = count > 0
+                ? 'Manual override · members avg ' + avg + ' (' + count + ')'
+                : 'Manual override';
+        } else if (count > 0) {
+            note.textContent = 'Average of ' + count + ' member rating' + (count > 1 ? 's' : '');
+        } else {
+            note.textContent = 'No ratings yet';
+        }
+        clear.disabled = manual === 0;
+    };
+
     for (let i = 1; i <= 5; i++) {
         let star = document.createElement('span');
         star.className = 'score-star';
@@ -376,34 +407,82 @@ function populateScoreWidget(parent, qid, onChange) {
         star.onmousemove = function (e) {
             let v = valueAt(e);
             star.title = v + ' / 5';
+            stars.classList.remove('is-average');
             paintStars(stars, v);
         };
         star.onclick = function (e) {
             let v = valueAt(e);
+            // Clicking the current manual value again clears the override.
             let newScore = (getQuestionScore(qid) === v) ? 0 : v;
             setQuestionScore(qid, newScore);
+            playSound(newScore > 0 ? 'select' : 'deselect');
+            refresh();
+            if (onChange) onChange(newScore);
+        };
+        stars.appendChild(star);
+    }
+    stars.onmouseleave = refresh;
+    parent.appendChild(stars);
+
+    parent.appendChild(note);
+
+    clear.onclick = function () {
+        setQuestionScore(qid, 0);
+        playSound('deselect');
+        refresh();
+        if (onChange) onChange(0);
+    };
+    parent.appendChild(clear);
+
+    refresh();
+}
+
+// Compact star control letting a single member rate how hard the current
+// question was. Shares the half-star painting of populateScoreWidget. The
+// container stops click propagation so rating a member doesn't also toggle
+// their answered state in the panel row.
+function buildMemberStarWidget(qid, memberId, onChange) {
+    let stars = document.createElement('div');
+    stars.className = 'score-stars member-score-stars';
+    for (let i = 1; i <= 5; i++) {
+        let star = document.createElement('span');
+        star.className = 'score-star';
+        star.dataset.index = i;
+
+        let bg = document.createElement('span');
+        bg.className = 'score-star-bg';
+        bg.textContent = '★';
+        let fill = document.createElement('span');
+        fill.className = 'score-star-fill';
+        fill.textContent = '★';
+        star.appendChild(bg);
+        star.appendChild(fill);
+
+        let valueAt = function (e) {
+            let rect = star.getBoundingClientRect();
+            return (e.clientX - rect.left) < rect.width / 2 ? i - 0.5 : i;
+        };
+        star.onmousemove = function (e) {
+            let v = valueAt(e);
+            star.title = v + ' / 5';
+            paintStars(stars, v);
+        };
+        star.onclick = function (e) {
+            e.stopPropagation();
+            let v = valueAt(e);
+            let cur = getMemberQuestionScore(qid, memberId);
+            let newScore = (cur === v) ? 0 : v;
+            setMemberQuestionScore(qid, memberId, newScore);
             paintStars(stars, newScore);
             playSound(newScore > 0 ? 'select' : 'deselect');
             if (onChange) onChange(newScore);
         };
         stars.appendChild(star);
     }
-    stars.onmouseleave = function () { paintStars(stars, getQuestionScore(qid)); };
-    paintStars(stars, getQuestionScore(qid));
-    parent.appendChild(stars);
-
-    let clear = document.createElement('button');
-    clear.type = 'button';
-    clear.className = 'score-clear';
-    clear.textContent = 'Clear';
-    clear.title = 'Clear rating';
-    clear.onclick = function () {
-        setQuestionScore(qid, 0);
-        paintStars(stars, 0);
-        playSound('deselect');
-        if (onChange) onChange(0);
-    };
-    parent.appendChild(clear);
+    stars.onclick = function (e) { e.stopPropagation(); };
+    stars.onmouseleave = function () { paintStars(stars, getMemberQuestionScore(qid, memberId)); };
+    paintStars(stars, getMemberQuestionScore(qid, memberId));
+    return stars;
 }
 
 function paintStars(container, score) {

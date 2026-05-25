@@ -217,7 +217,7 @@ class QuestionsWheel {
         this.answered = {};
         this.rolledMemberId = null;
         this.rolling = false;
-        this._rollTimer = null;
+        this._rollRaf = null;
 
         let hadSavedState = !!loadWheelState(this.stateName);
         this.restoreState();
@@ -587,20 +587,6 @@ class QuestionsWheel {
         let rollBtn = document.getElementById('wheelMembersRollBtn');
         if (rollBtn) rollBtn.onclick = () => this.rollMember();
 
-        let rollCloseBtn = document.getElementById('memberRollClose');
-        if (rollCloseBtn) rollCloseBtn.onclick = () => this.closeMemberRoll();
-        let rollAgainBtn = document.getElementById('memberRollAgain');
-        if (rollAgainBtn) {
-            rollAgainBtn.onclick = () => {
-                if (this.rolling || !this.selected) return;
-                let pool = this.unansweredMembers(this.selected.id);
-                if (pool.length < 2) { this.closeMemberRoll(); return; }
-                this._rollPool = pool;
-                this.renderMemberRollWheel(pool);
-                this.spinMemberRoll();
-            };
-        }
-
         let membersBtn = document.getElementById('wheelModalMembersBtn');
         if (membersBtn) membersBtn.onclick = () => this.toggleMembersPanel();
 
@@ -790,6 +776,7 @@ class QuestionsWheel {
             if (this.answered[qid].length === 0) delete this.answered[qid];
         });
         if (this.rolledMemberId === id) this.rolledMemberId = null;
+        removeMemberScores(id);
         this.persistState();
         this.renderMembersConfig();
         this.renderMembersPanel();
@@ -1018,7 +1005,7 @@ class QuestionsWheel {
             return;
         }
 
-        this.openMemberRoll(pool);
+        this.animateMemberRoll(pool);
     }
 
     // Records the roll result on the side panel (and highlights the member).
@@ -1029,146 +1016,65 @@ class QuestionsWheel {
         this.renderMembersPanel();
     }
 
-    // Opens the spinning member wheel over the question modal and spins it.
-    openMemberRoll(pool) {
-        let overlay = document.getElementById('memberRollOverlay');
-        if (!overlay) { this.landRolledMember(pool[Math.floor(Math.random() * pool.length)]); return; }
-        this._rollPool = pool;
-        this._memberRollRotation = 0;
-        let spinner = document.getElementById('memberRollSpinner');
-        if (spinner) { spinner.style.transition = 'none'; spinner.style.transform = 'rotate(0deg)'; }
-        let resultEl = document.getElementById('memberRollResult');
-        if (resultEl) { resultEl.hidden = true; resultEl.textContent = ''; }
-        let againBtn = document.getElementById('memberRollAgain');
-        if (againBtn) againBtn.hidden = true;
-        this.renderMemberRollWheel(pool);
-        overlay.hidden = false;
-        requestAnimationFrame(() => this.spinMemberRoll());
-    }
-
-    closeMemberRoll() {
-        this.cancelRoll();
-        playSound('next');
-        this.renderMembersPanel();
-    }
-
     cancelRoll() {
-        if (this._rollTimer) { clearTimeout(this._rollTimer); this._rollTimer = null; }
+        if (this._rollRaf) { cancelAnimationFrame(this._rollRaf); this._rollRaf = null; }
         this.rolling = false;
-        let overlay = document.getElementById('memberRollOverlay');
-        if (overlay) overlay.hidden = true;
+        this.clearRollHighlight();
     }
 
-    renderMemberRollWheel(pool) {
-        let svg = document.getElementById('memberRollSvg');
-        if (!svg) return;
-        while (svg.firstChild) svg.removeChild(svg.firstChild);
-        let cx = 200, cy = 200, radius = 192;
+    clearRollHighlight() {
+        let list = document.getElementById('wheelMembersPanelList');
+        if (list) list.querySelectorAll('.wheel-member-row.rolling')
+            .forEach(r => r.classList.remove('rolling'));
+    }
+
+    // Picks a random member by sweeping a highlight down the member list —
+    // fast at first, then easing to a stop on the winner. The sweep lasts as
+    // long as a wheel spin (prefs.spinTimeMs).
+    animateMemberRoll(pool) {
         let n = pool.length;
-        let palette = ['#e53935', '#1e88e5', '#43a047', '#fb8c00', '#8e24aa',
-                       '#00897b', '#fdd835', '#6d4c41', '#d81b60', '#3949ab'];
-        let step = 360 / n;
-        for (let i = 0; i < n; i++) {
-            let startAngle = i * step - 90;
-            let endAngle = startAngle + step;
-            let sector = document.createElementNS(WHEEL_SVG_NS, 'path');
-            sector.setAttribute('d', this.makeSectorPath(cx, cy, radius, startAngle, endAngle));
-            sector.setAttribute('fill', palette[i % palette.length]);
-            sector.setAttribute('stroke', '#1a1a1a');
-            sector.setAttribute('stroke-width', '2');
-            svg.appendChild(sector);
-            this.appendMemberLabel(svg, pool[i].name, cx, cy, radius, startAngle + step / 2, step);
-        }
-    }
-
-    appendMemberLabel(svg, text, cx, cy, radius, midAngle, step) {
-        let innerR = radius * 0.2, outerR = radius - 14;
-        let textRadius = (innerR + outerR) / 2;
-        let pos = polarToCartesian(cx, cy, textRadius, midAngle);
-        let angularLimit = textRadius * (step * Math.PI / 180) * 0.8;
-        let fontSize = Math.max(9, Math.min(angularLimit, 20));
-        let txt = document.createElementNS(WHEEL_SVG_NS, 'text');
-        txt.setAttribute('x', pos.x);
-        txt.setAttribute('y', pos.y);
-        txt.setAttribute('text-anchor', 'middle');
-        txt.setAttribute('dominant-baseline', 'middle');
-        txt.setAttribute('fill', '#ffffff');
-        txt.setAttribute('font-weight', 'bold');
-        txt.setAttribute('font-size', fontSize);
-        txt.setAttribute('paint-order', 'stroke');
-        txt.setAttribute('stroke', 'rgba(0,0,0,0.55)');
-        txt.setAttribute('stroke-width', Math.max(1, fontSize * 0.1));
-        txt.setAttribute('stroke-linejoin', 'round');
-        txt.setAttribute('transform', 'rotate(' + (midAngle + 180) + ' ' + pos.x + ' ' + pos.y + ')');
-        txt.style.pointerEvents = 'none';
-        txt.textContent = text;
-        svg.appendChild(txt);
-
-        let availLen = outerR - innerR;
-        try {
-            if (txt.getBBox().width > availLen) {
-                let lo = 0, hi = text.length - 1, best = 0;
-                while (lo <= hi) {
-                    let mid = (lo + hi) >> 1;
-                    txt.textContent = text.substring(0, mid) + '…';
-                    if (txt.getBBox().width <= availLen) { best = mid; lo = mid + 1; }
-                    else hi = mid - 1;
-                }
-                txt.textContent = best === 0 ? '…' : text.substring(0, best) + '…';
-            }
-        } catch (e) {}
-    }
-
-    spinMemberRoll() {
-        if (this.rolling) return;
-        let overlay = document.getElementById('memberRollOverlay');
-        let spinner = document.getElementById('memberRollSpinner');
-        let pool = this._rollPool || [];
-        let n = pool.length;
-        if (!overlay || !spinner || n === 0) return;
-
         this.rolling = true;
-        this.renderMembersPanel();
-        let resultEl = document.getElementById('memberRollResult');
-        let againBtn = document.getElementById('memberRollAgain');
+        this.rolledMemberId = null;
+        let resultEl = document.getElementById('wheelMembersRollResult');
         if (resultEl) resultEl.hidden = true;
-        if (againBtn) againBtn.hidden = true;
+        // Re-render so the Roll button is disabled and rows carry member ids.
+        this.renderMembersPanel();
 
-        let step = 360 / n;
+        let list = document.getElementById('wheelMembersPanelList');
+        let rowFor = (id) => list
+            ? Array.from(list.children).find(r => r.dataset && r.dataset.memberId === id)
+            : null;
+
         let pickedIdx = Math.floor(Math.random() * n);
         let picked = pool[pickedIdx];
-        let midAngle = pickedIdx * step - 90 + step / 2;
-        let randomOffset = (Math.random() - 0.5) * step * 0.6;
-        let targetMod = -90 - midAngle + randomOffset;
-        let normalize = (a) => ((a % 360) + 360) % 360;
-        let delta = normalize(targetMod) - normalize(this._memberRollRotation || 0);
-        if (delta < 0) delta += 360;
-        let totalDelta = delta + 360 * 5;
-        let startRotation = this._memberRollRotation || 0;
-        this._memberRollRotation = startRotation + totalDelta;
-
-        spinner.style.transition = 'none';
+        // At least three full passes, landing exactly on the winner.
+        let totalSteps = n * 3 + pickedIdx;
+        let duration = Math.max(300, this.prefs.spinTimeMs);
         let startTime = performance.now();
-        let duration = Math.min(this.prefs.spinTimeMs, 3000);
-        let lastTick = 0;
+        let lastStep = -1;
+
         let animate = (now) => {
-            if (overlay.hidden) { this.rolling = false; return; }
+            if (!this.rolling) { this.clearRollHighlight(); return; }
             let t = Math.min(1, (now - startTime) / duration);
-            let rot = startRotation + totalDelta * easeOutQuint(t);
-            spinner.style.transform = 'rotate(' + rot + 'deg)';
-            let passed = Math.floor((rot - startRotation) / step);
-            while (lastTick < passed) { lastTick++; playSound('wheel-tick', 0.5); }
+            let step = Math.floor(easeOutQuint(t) * totalSteps);
+            if (step !== lastStep) {
+                lastStep = step;
+                this.clearRollHighlight();
+                let row = rowFor(pool[step % n].id);
+                if (row) row.classList.add('rolling');
+                playSound('wheel-tick', 0.5);
+            }
             if (t < 1) {
-                requestAnimationFrame(animate);
+                this._rollRaf = requestAnimationFrame(animate);
             } else {
+                this._rollRaf = null;
                 this.rolling = false;
+                this.clearRollHighlight();
                 playSound('wheel-land');
                 this.landRolledMember(picked);
-                if (resultEl) { resultEl.hidden = false; resultEl.textContent = '🎲 ' + picked.name; }
-                if (againBtn) againBtn.hidden = false;
             }
         };
-        requestAnimationFrame(animate);
+        this._rollRaf = requestAnimationFrame(animate);
     }
 
     applyMembersButton() {
@@ -1219,6 +1125,7 @@ class QuestionsWheel {
                 + (disabled ? ' disabled' : '')
                 + (answered ? ' answered' : '')
                 + (m.id === this.rolledMemberId ? ' rolled' : '');
+            row.dataset.memberId = m.id;
             if (!disabled) row.onclick = () => this.toggleAnswered(m.id);
 
             let check = document.createElement('span');
@@ -1243,6 +1150,16 @@ class QuestionsWheel {
                 tag.textContent = '🎲';
                 row.appendChild(tag);
             }
+
+            // Each member rates how hard the current question was; the average
+            // feeds the question's overall rating.
+            if (qid != null && isScoringEnabled()) {
+                row.appendChild(buildMemberStarWidget(qid, m.id, () => {
+                    this.refreshModalScore();
+                    this.renderSidebar();
+                }));
+            }
+
             list.appendChild(row);
         });
     }
@@ -1711,12 +1628,15 @@ class QuestionsWheel {
         item.appendChild(titleEl);
 
         if (isScoringEnabled()) {
-            let score = getQuestionScore(question.id);
+            let manual = getQuestionScore(question.id);
+            let score = manual > 0 ? manual : getMemberAverageScore(question.id);
             if (score > 0) {
                 let badge = document.createElement('span');
-                badge.className = 'wheel-question-score';
+                badge.className = 'wheel-question-score' + (manual > 0 ? '' : ' is-average');
                 badge.textContent = '★' + score;
-                badge.title = score + ' / 5';
+                badge.title = manual > 0
+                    ? score + ' / 5 (manual)'
+                    : score + ' / 5 (average of ' + getMemberScoreCount(question.id) + ' members)';
                 item.appendChild(badge);
             }
         }
