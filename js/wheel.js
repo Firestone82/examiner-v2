@@ -1323,10 +1323,12 @@ class QuestionsWheel {
             if (r < 0) { pickedIdx = i; break; }
         }
         let picked = pool[pickedIdx];
-        // At least three full passes, ending on the winner. The winner is held
-        // through the slow tail of the deceleration (rather than being ticked
-        // onto at the very end) so the highlight comes to rest on it.
-        let totalSteps = n * 3 + pickedIdx;
+        // Begin the sweep on a random member rather than always the first one,
+        // then run at least three full passes before easing to a stop on the
+        // winner. totalSteps is chosen so the final highlight lands on `picked`
+        // given the random starting offset.
+        let startOffset = Math.floor(Math.random() * n);
+        let totalSteps = n * 3 + ((pickedIdx - startOffset + n) % n);
         let duration = Math.max(300, this.prefs.spinTimeMs);
         let startTime = performance.now();
         let lastStep = -1;
@@ -1338,7 +1340,7 @@ class QuestionsWheel {
             if (step !== lastStep) {
                 lastStep = step;
                 this.clearRollHighlight();
-                let row = rowFor(pool[step % n].id);
+                let row = rowFor(pool[(step + startOffset) % n].id);
                 if (row) row.classList.add('rolling');
                 playSound('wheel-tick', 0.5);
             }
