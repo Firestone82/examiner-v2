@@ -682,11 +682,26 @@ class QuestionsWheel {
         this.render();
     }
 
-    // Exports the user's star ratings for the current DLC as a CSV, with one
-    // row per rated question and its group, ordered by group then title.
+    // Exports the star ratings for the current DLC as a text table, one row per
+    // rated question (group + overall rating), plus a column per member showing
+    // that member's own difficulty rating. Ordered by group then title.
     exportRatings() {
         let scores = getAllScores()[currentDlcName] || {};
-        let rated = this.questions.filter(q => (scores[q.id] || 0) > 0);
+
+        // Members who rated at least one question get their own column.
+        let ratingMembers = this.members.filter(m =>
+            this.questions.some(q => getMemberQuestionScore(q.id, m.id) > 0));
+
+        // Overall rating shown to the user: manual override, else member average.
+        let overallOf = q => {
+            let manual = scores[q.id] || 0;
+            return manual > 0 ? manual : getMemberAverageScore(q.id);
+        };
+
+        // A question is exportable if it has an overall rating or any member
+        // left a rating for it.
+        let rated = this.questions.filter(q =>
+            overallOf(q) > 0 || ratingMembers.some(m => getMemberQuestionScore(q.id, m.id) > 0));
         if (rated.length === 0) {
             alert('No star ratings to export yet.');
             return;
@@ -711,9 +726,16 @@ class QuestionsWheel {
         });
 
         let cell = v => String(v === undefined || v === null ? '' : v).replace(/[\r\n\t]+/g, ' ');
-        let headers = ['Group', 'ID', 'Question', 'Rating'];
-        let alignRight = [false, true, false, true];
-        let rows = sorted.map(q => [groupNameOf(q), q.id, titleOf(q), scores[q.id]].map(cell));
+        let headers = ['Group', 'ID', 'Question', 'Rating', ...ratingMembers.map(m => m.name)];
+        let alignRight = [false, true, false, true, ...ratingMembers.map(() => true)];
+        let rows = sorted.map(q => {
+            let base = [groupNameOf(q), q.id, titleOf(q), overallOf(q)];
+            let memberCells = ratingMembers.map(m => {
+                let s = getMemberQuestionScore(q.id, m.id);
+                return s > 0 ? s : '';
+            });
+            return base.concat(memberCells).map(cell);
+        });
 
         let widths = headers.map((h, i) =>
             Math.max(h.length, ...rows.map(r => r[i].length)));
