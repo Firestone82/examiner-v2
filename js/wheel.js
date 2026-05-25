@@ -1008,11 +1008,10 @@ class QuestionsWheel {
         this.animateMemberRoll(pool);
     }
 
-    // Records the roll result on the side panel (and highlights the member).
+    // Marks the rolled member; the panel row highlight and 🎲 tag are enough to
+    // show who was picked, so no separate result banner is shown.
     landRolledMember(member) {
         this.rolledMemberId = member.id;
-        let resultEl = document.getElementById('wheelMembersRollResult');
-        if (resultEl) { resultEl.hidden = false; resultEl.textContent = '🎲 ' + member.name; }
         this.renderMembersPanel();
     }
 
@@ -1073,13 +1072,15 @@ class QuestionsWheel {
                 if (row) row.classList.add('rolling');
                 playSound('wheel-tick', 0.5);
             }
-            if (t < 1) {
-                this._rollRaf = requestAnimationFrame(animate);
-            } else {
+            // Land as soon as the highlight reaches the winner — don't sit on it
+            // waiting out the flat tail of the easing curve.
+            if (step >= totalSteps || t >= 1) {
                 this._rollRaf = null;
                 this.rolling = false;
                 playSound('wheel-land');
                 this.landRolledMember(picked);
+            } else {
+                this._rollRaf = requestAnimationFrame(animate);
             }
         };
         this._rollRaf = requestAnimationFrame(animate);
