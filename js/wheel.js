@@ -34,6 +34,31 @@ function clearWheelState(name) {
     }
 }
 
+// Per-DLC member roster (who is answering). Kept separate from the wheel
+// state so the roster survives a wheel reset — the people in the room don't
+// change just because the questions were reshuffled.
+const WHEEL_MEMBERS_KEY = 'examiner_wheel_members';
+
+function loadWheelMembers(name) {
+    if (!name) return [];
+    try {
+        let list = (JSON.parse(localStorage.getItem(WHEEL_MEMBERS_KEY)) || {})[name];
+        return Array.isArray(list)
+            ? list
+                .filter(m => m && typeof m.id === 'string' && typeof m.name === 'string')
+                .map(m => ({ id: m.id, name: m.name, disabled: m.disabled === true }))
+            : [];
+    } catch { return []; }
+}
+
+function saveWheelMembers(name, members) {
+    if (!name) return;
+    let all = {};
+    try { all = JSON.parse(localStorage.getItem(WHEEL_MEMBERS_KEY)) || {}; } catch {}
+    all[name] = members;
+    try { localStorage.setItem(WHEEL_MEMBERS_KEY, JSON.stringify(all)); } catch {}
+}
+
 // True only when the saved state reflects real progress — i.e. the user hid a
 // question or shuffled the order. Group collapse state is just a view
 // preference (and may be set automatically for large DLCs), so it does not
@@ -42,6 +67,10 @@ function clearWheelState(name) {
 function isMeaningfulWheelState(saved, questions) {
     if (!saved) return false;
     if (Array.isArray(saved.hidden) && saved.hidden.length > 0) return true;
+    if (saved.answered && typeof saved.answered === 'object'
+        && Object.keys(saved.answered).some(qid => Array.isArray(saved.answered[qid]) && saved.answered[qid].length > 0)) {
+        return true;
+    }
     if (Array.isArray(saved.order) && Array.isArray(questions)) {
         let orig = questions.map(q => q.id);
         if (saved.order.length !== orig.length) return true;
@@ -73,6 +102,7 @@ const WHEEL_DEFAULT_PREFS = {
     dynamicRotation: false,
     centered: true,
     timerEnabled: false,
+    membersEnabled: false,
 };
 
 let wheelInstance = null;
@@ -91,6 +121,7 @@ function loadWheelPrefs() {
                 dynamicRotation: p.dynamicRotation === true,
                 centered:        p.centered !== false,
                 timerEnabled:    p.timerEnabled === true,
+                membersEnabled:  p.membersEnabled === true,
             };
         }
     } catch {}
@@ -120,9 +151,28 @@ function toggleWheelConfig(event) {
     let panel = document.getElementById('wheelConfigPanel');
     if (!panel) return;
     let willOpen = panel.hidden;
-    // Close sound panels too so they don't stack
+    // Close sound and members panels too so they don't stack
     document.querySelectorAll('.sound-panel').forEach(p => p.hidden = true);
+    let members = document.getElementById('wheelMembersManagePanel');
+    if (members) members.hidden = true;
     panel.hidden = !willOpen;
+}
+
+function toggleWheelMembersPanel(event) {
+    if (event) event.stopPropagation();
+    let panel = document.getElementById('wheelMembersManagePanel');
+    if (!panel) return;
+    let willOpen = panel.hidden;
+    // Close sound and config panels so only one is open at a time.
+    document.querySelectorAll('.sound-panel').forEach(p => p.hidden = true);
+    let cfg = document.getElementById('wheelConfigPanel');
+    if (cfg) cfg.hidden = true;
+    panel.hidden = !willOpen;
+    if (willOpen && wheelInstance) {
+        wheelInstance.renderMembersConfig();
+        let input = document.getElementById('wheelMemberInput');
+        if (input) input.focus();
+    }
 }
 
 function easeOutQuint(t) {
@@ -160,6 +210,15 @@ class QuestionsWheel {
         this.timerInterval = null;
         this.timerStart = 0;
 
+        // Member roster (persists per DLC) and per-question answered tracking
+        // (part of the resettable wheel state). rolledMemberId is transient —
+        // it just highlights the last "Roll" result in the open modal.
+        this.members = loadWheelMembers(this.stateName);
+        this.answered = {};
+        this.rolledMemberId = null;
+        this.rolling = false;
+        this._rollTimer = null;
+
         let hadSavedState = !!loadWheelState(this.stateName);
         this.restoreState();
         // On a fresh open of a large grouped DLC, collapse the named group
@@ -195,6 +254,19 @@ class QuestionsWheel {
         if (!saved) return;
         if (Array.isArray(saved.hidden)) this.hidden = new Set(saved.hidden);
         if (Array.isArray(saved.collapsed)) this.collapsedGroups = new Set(saved.collapsed);
+        if (saved.answered && typeof saved.answered === 'object') {
+            // Keep only known members so a removed member can't linger.
+            let valid = new Set(this.members.map(m => m.id));
+            let restored = {};
+            Object.keys(saved.answered).forEach(qid => {
+                let ids = saved.answered[qid];
+                if (Array.isArray(ids)) {
+                    let kept = ids.filter(id => valid.has(id));
+                    if (kept.length) restored[qid] = kept;
+                }
+            });
+            this.answered = restored;
+        }
         if (Array.isArray(saved.order)) {
             let byId = {};
             this.questions.forEach(q => { byId[q.id] = q; });
@@ -215,6 +287,7 @@ class QuestionsWheel {
             hidden: Array.from(this.hidden),
             order: this.wheelOrder.map(q => q.id),
             collapsed: Array.from(this.collapsedGroups),
+            answered: this.answered,
         });
     }
 
@@ -447,6 +520,72 @@ class QuestionsWheel {
             };
         }
 
+        let membersSwitch = document.getElementById('wheelMembersSwitch');
+        let membersRow = document.getElementById('wheelMembersRow');
+        let updateMembersSwitch = () => membersSwitch && membersSwitch.classList.toggle('on', this.prefs.membersEnabled);
+        updateMembersSwitch();
+        this.applyMembersFeatureVisibility();
+        if (membersRow) {
+            membersRow.onclick = (e) => {
+                e.preventDefault();
+                this.prefs.membersEnabled = !this.prefs.membersEnabled;
+                updateMembersSwitch();
+                saveWheelPrefs(this.prefs);
+                this.applyMembersFeatureVisibility();
+                this.renderSidebar();
+                // Reflect the change in an open modal right away.
+                if (!document.getElementById('wheelModal').hidden) {
+                    this.applyMembersButton();
+                    if (!this.prefs.membersEnabled) this.closeMembersPanel();
+                }
+            };
+        }
+
+        let memberInput = document.getElementById('wheelMemberInput');
+        let memberAddBtn = document.getElementById('wheelMemberAddBtn');
+        let commitMember = () => {
+            if (!memberInput) return;
+            if (this.addMember(memberInput.value)) {
+                memberInput.value = '';
+            }
+            memberInput.focus();
+        };
+        if (memberAddBtn) memberAddBtn.onclick = commitMember;
+        if (memberInput) {
+            memberInput.addEventListener('keydown', e => {
+                if (e.key === 'Enter') { e.preventDefault(); commitMember(); }
+            });
+            // Typing inside the panel shouldn't bubble to the spacebar-spin
+            // handler or the outside-click closer.
+            memberInput.addEventListener('keydown', e => e.stopPropagation());
+        }
+        this.renderMembersConfig();
+
+        let showPendingBtn = document.getElementById('wheelMembersShowPendingBtn');
+        if (showPendingBtn) showPendingBtn.onclick = () => this.showQuestionsWithPending();
+        let hideAnsweredBtn = document.getElementById('wheelMembersHideAnsweredBtn');
+        if (hideAnsweredBtn) hideAnsweredBtn.onclick = () => this.hideFullyAnsweredQuestions();
+
+        let rollBtn = document.getElementById('wheelMembersRollBtn');
+        if (rollBtn) rollBtn.onclick = () => this.rollMember();
+
+        let rollCloseBtn = document.getElementById('memberRollClose');
+        if (rollCloseBtn) rollCloseBtn.onclick = () => this.closeMemberRoll();
+        let rollAgainBtn = document.getElementById('memberRollAgain');
+        if (rollAgainBtn) {
+            rollAgainBtn.onclick = () => {
+                if (this.rolling || !this.selected) return;
+                let pool = this.unansweredMembers(this.selected.id);
+                if (pool.length < 2) { this.closeMemberRoll(); return; }
+                this._rollPool = pool;
+                this.renderMemberRollWheel(pool);
+                this.spinMemberRoll();
+            };
+        }
+
+        let membersBtn = document.getElementById('wheelModalMembersBtn');
+        if (membersBtn) membersBtn.onclick = () => this.toggleMembersPanel();
+
         let exportBtn = document.getElementById('wheelExportRatingsBtn');
         if (exportBtn) {
             exportBtn.onclick = () => this.exportRatings();
@@ -478,6 +617,17 @@ class QuestionsWheel {
             if (configBtn && configBtn.contains(e.target)) return;
             if (configPanel.contains(e.target)) return;
             configPanel.hidden = true;
+        });
+
+        // Same close-on-outside-click behaviour for the members roster panel.
+        let membersPanel = document.getElementById('wheelMembersManagePanel');
+        let membersPanelBtn = document.getElementById('wheelMembersButton');
+        if (membersPanel) membersPanel.addEventListener('click', (e) => e.stopPropagation());
+        document.addEventListener('click', (e) => {
+            if (!membersPanel || membersPanel.hidden) return;
+            if (membersPanelBtn && membersPanelBtn.contains(e.target)) return;
+            if (membersPanel.contains(e.target)) return;
+            membersPanel.hidden = true;
         });
 
         // ── Sidebar controls ─────────────────────────────────────────────────
@@ -579,6 +729,504 @@ class QuestionsWheel {
         a.click();
         document.body.removeChild(a);
         setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    // ── Members ───────────────────────────────────────────────────────────────
+
+    // The roster-editing button (next to the gear) only exists while the
+    // members feature is on; turning it off also closes its panel.
+    applyMembersFeatureVisibility() {
+        let btn = document.getElementById('wheelMembersButton');
+        if (btn) btn.hidden = !this.prefs.membersEnabled;
+        if (!this.prefs.membersEnabled) {
+            let panel = document.getElementById('wheelMembersManagePanel');
+            if (panel) panel.hidden = true;
+        }
+    }
+
+    addMember(name) {
+        name = (name || '').trim();
+        if (!name) return false;
+        // Case-insensitive duplicate guard so the roster stays unambiguous.
+        if (this.members.some(m => m.name.toLowerCase() === name.toLowerCase())) {
+            return false;
+        }
+        let id = 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        this.members.push({ id, name, disabled: false });
+        saveWheelMembers(this.stateName, this.members);
+        this.renderMembersConfig();
+        this.renderMembersPanel();
+        this.renderSidebar();
+        playSound('select');
+        return true;
+    }
+
+    removeMember(id) {
+        let idx = this.members.findIndex(m => m.id === id);
+        if (idx < 0) return;
+        this.members.splice(idx, 1);
+        saveWheelMembers(this.stateName, this.members);
+        // Drop the removed member from every question's answered list.
+        Object.keys(this.answered).forEach(qid => {
+            this.answered[qid] = this.answered[qid].filter(mid => mid !== id);
+            if (this.answered[qid].length === 0) delete this.answered[qid];
+        });
+        if (this.rolledMemberId === id) this.rolledMemberId = null;
+        this.persistState();
+        this.renderMembersConfig();
+        this.renderMembersPanel();
+        this.renderSidebar();
+        playSound('deselect');
+    }
+
+    // Renames a member in place. Returns false (and changes nothing) when the
+    // name is empty or already taken by another member.
+    renameMember(id, name) {
+        name = (name || '').trim();
+        if (!name) return false;
+        let m = this.members.find(x => x.id === id);
+        if (!m) return false;
+        if (this.members.some(x => x.id !== id && x.name.toLowerCase() === name.toLowerCase())) {
+            return false;
+        }
+        if (m.name === name) return true;
+        m.name = name;
+        saveWheelMembers(this.stateName, this.members);
+        this.renderMembersConfig();
+        this.renderMembersPanel();
+        this.renderSidebar();
+        return true;
+    }
+
+    // Temporarily takes a member out of the rotation (or puts them back).
+    // Disabled members are skipped by the roll and don't count toward
+    // completion — disabling the last pending member can complete a question.
+    setMemberDisabled(id, disabled) {
+        let m = this.members.find(x => x.id === id);
+        if (!m || m.disabled === disabled) return;
+        m.disabled = disabled;
+        saveWheelMembers(this.stateName, this.members);
+        if (disabled && this.rolledMemberId === id) this.rolledMemberId = null;
+        playSound(disabled ? 'deselect' : 'select');
+        this.renderMembersConfig();
+        if (!this.maybeCompleteSelected()) {
+            this.persistState();
+            this.renderMembersPanel();
+            this.renderSidebar();
+        }
+    }
+
+    renderMembersConfig() {
+        let list = document.getElementById('wheelMembersConfigList');
+        if (!list) return;
+        list.innerHTML = '';
+        if (this.members.length === 0) {
+            let empty = document.createElement('div');
+            empty.className = 'wheel-members-config-empty';
+            empty.textContent = 'No members yet.';
+            list.appendChild(empty);
+            return;
+        }
+        this.members.forEach(m => {
+            let row = document.createElement('div');
+            row.className = 'wheel-member-config-row' + (m.disabled ? ' disabled' : '');
+
+            let nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.className = 'wheel-member-config-name-input';
+            nameInput.value = m.name;
+            nameInput.maxLength = 40;
+            nameInput.title = 'Rename member';
+            // Keep typing local — don't trigger spacebar-spin or panel close.
+            nameInput.addEventListener('keydown', e => e.stopPropagation());
+            let commit = () => { if (!this.renameMember(m.id, nameInput.value)) nameInput.value = m.name; };
+            nameInput.addEventListener('blur', commit);
+            nameInput.addEventListener('keydown', e => {
+                if (e.key === 'Enter') { e.preventDefault(); nameInput.blur(); }
+                else if (e.key === 'Escape') { nameInput.value = m.name; nameInput.blur(); }
+            });
+
+            let toggle = document.createElement('span');
+            toggle.className = 'sound-switch wheel-member-enable-switch' + (m.disabled ? '' : ' on');
+            toggle.title = m.disabled ? 'Disabled — click to enable' : 'Enabled — click to disable';
+            toggle.onclick = () => this.setMemberDisabled(m.id, !m.disabled);
+
+            let count = document.createElement('span');
+            count.className = 'wheel-member-count';
+            count.textContent = '(' + this.answeredCountForMember(m.id) + ')';
+            count.title = 'Questions answered';
+
+            let del = document.createElement('button');
+            del.type = 'button';
+            del.className = 'wheel-member-config-remove';
+            del.title = 'Remove member';
+            del.textContent = '✕';
+            del.onclick = () => this.removeMember(m.id);
+
+            row.appendChild(nameInput);
+            row.appendChild(count);
+            row.appendChild(toggle);
+            row.appendChild(del);
+            list.appendChild(row);
+        });
+    }
+
+    answeredIds(qid) {
+        return this.answered[qid] || [];
+    }
+
+    isAnswered(qid, memberId) {
+        return this.answeredIds(qid).indexOf(memberId) >= 0;
+    }
+
+    // Total number of questions this member has marked answered (across the
+    // whole DLC).
+    answeredCountForMember(memberId) {
+        let n = 0;
+        for (let qid in this.answered) {
+            if (this.answered[qid].indexOf(memberId) >= 0) n++;
+        }
+        return n;
+    }
+
+    // Members currently in the rotation (disabled ones are sat out).
+    activeMembers() {
+        return this.members.filter(m => !m.disabled);
+    }
+
+    // Bulk visibility helpers driven by member-answered state.
+    // Un-hide every question that still has at least one enabled member who
+    // hasn't answered it.
+    showQuestionsWithPending() {
+        if (this.spinning) return;
+        if (this.activeMembers().length === 0) return;
+        let changed = false;
+        this.questions.forEach(q => {
+            if (this.hidden.has(q.id) && !this.allAnswered(q.id)) {
+                this.hidden.delete(q.id);
+                changed = true;
+            }
+        });
+        if (changed) this.resetSpinner();
+        this.render();
+        playSound(changed ? 'select' : 'deselect');
+    }
+
+    // Hide every question that all enabled members have already answered.
+    hideFullyAnsweredQuestions() {
+        if (this.spinning) return;
+        if (this.activeMembers().length === 0) return;
+        let changed = false;
+        this.questions.forEach(q => {
+            if (!this.hidden.has(q.id) && this.allAnswered(q.id)) {
+                this.hidden.add(q.id);
+                changed = true;
+            }
+        });
+        if (changed) this.resetSpinner();
+        this.render();
+        playSound(changed ? 'deselect' : 'select');
+    }
+
+    unansweredMembers(qid) {
+        let done = new Set(this.answeredIds(qid));
+        return this.activeMembers().filter(m => !done.has(m.id));
+    }
+
+    // A question is complete only when there's at least one active member and
+    // none of them are still pending.
+    allAnswered(qid) {
+        return this.activeMembers().length > 0 && this.unansweredMembers(qid).length === 0;
+    }
+
+    toggleAnswered(memberId) {
+        if (!this.selected || this.rolling) return;
+        let member = this.members.find(m => m.id === memberId);
+        if (!member || member.disabled) return;
+        let qid = this.selected.id;
+        let list = this.answered[qid] ? this.answered[qid].slice() : [];
+        let pos = list.indexOf(memberId);
+        let wasAnswered = pos >= 0;
+        if (wasAnswered) list.splice(pos, 1);
+        else list.push(memberId);
+        if (list.length) this.answered[qid] = list;
+        else delete this.answered[qid];
+        if (this.rolledMemberId === memberId && !wasAnswered) this.rolledMemberId = null;
+
+        if (this.maybeCompleteSelected()) return;
+        playSound(wasAnswered ? 'deselect' : 'select');
+        this.persistState();
+        this.renderMembersPanel();
+        this.renderSidebar();
+    }
+
+    // When every active member has answered the open question, mark it hidden
+    // on the wheel but keep the modal open (the user closes it themselves).
+    // Returns true when it handled completion.
+    maybeCompleteSelected() {
+        if (!this.selected || !this.allAnswered(this.selected.id)) return false;
+        let qid = this.selected.id;
+        if (!this.hidden.has(qid)) {
+            this.hidden.add(qid);
+            this.resetSpinner();
+        }
+        playSound('navigate');
+        this.render();
+        this.renderMembersPanel();
+        return true;
+    }
+
+    rollMember() {
+        if (!this.selected || this.rolling) return;
+        let resultEl = document.getElementById('wheelMembersRollResult');
+        let pool = this.unansweredMembers(this.selected.id);
+        if (pool.length === 0) {
+            this.rolledMemberId = null;
+            if (resultEl) {
+                resultEl.hidden = false;
+                resultEl.textContent = this.members.length === 0
+                    ? 'No members to roll.'
+                    : 'Everyone has answered.';
+            }
+            this.renderMembersPanel();
+            playSound('deselect');
+            return;
+        }
+
+        // One candidate — nothing to spin, land immediately.
+        if (pool.length === 1) {
+            this.landRolledMember(pool[0]);
+            playSound('wheel-land');
+            return;
+        }
+
+        this.openMemberRoll(pool);
+    }
+
+    // Records the roll result on the side panel (and highlights the member).
+    landRolledMember(member) {
+        this.rolledMemberId = member.id;
+        let resultEl = document.getElementById('wheelMembersRollResult');
+        if (resultEl) { resultEl.hidden = false; resultEl.textContent = '🎲 ' + member.name; }
+        this.renderMembersPanel();
+    }
+
+    // Opens the spinning member wheel over the question modal and spins it.
+    openMemberRoll(pool) {
+        let overlay = document.getElementById('memberRollOverlay');
+        if (!overlay) { this.landRolledMember(pool[Math.floor(Math.random() * pool.length)]); return; }
+        this._rollPool = pool;
+        this._memberRollRotation = 0;
+        let spinner = document.getElementById('memberRollSpinner');
+        if (spinner) { spinner.style.transition = 'none'; spinner.style.transform = 'rotate(0deg)'; }
+        let resultEl = document.getElementById('memberRollResult');
+        if (resultEl) { resultEl.hidden = true; resultEl.textContent = ''; }
+        let againBtn = document.getElementById('memberRollAgain');
+        if (againBtn) againBtn.hidden = true;
+        this.renderMemberRollWheel(pool);
+        overlay.hidden = false;
+        requestAnimationFrame(() => this.spinMemberRoll());
+    }
+
+    closeMemberRoll() {
+        this.cancelRoll();
+        playSound('next');
+        this.renderMembersPanel();
+    }
+
+    cancelRoll() {
+        if (this._rollTimer) { clearTimeout(this._rollTimer); this._rollTimer = null; }
+        this.rolling = false;
+        let overlay = document.getElementById('memberRollOverlay');
+        if (overlay) overlay.hidden = true;
+    }
+
+    renderMemberRollWheel(pool) {
+        let svg = document.getElementById('memberRollSvg');
+        if (!svg) return;
+        while (svg.firstChild) svg.removeChild(svg.firstChild);
+        let cx = 200, cy = 200, radius = 192;
+        let n = pool.length;
+        let palette = ['#e53935', '#1e88e5', '#43a047', '#fb8c00', '#8e24aa',
+                       '#00897b', '#fdd835', '#6d4c41', '#d81b60', '#3949ab'];
+        let step = 360 / n;
+        for (let i = 0; i < n; i++) {
+            let startAngle = i * step - 90;
+            let endAngle = startAngle + step;
+            let sector = document.createElementNS(WHEEL_SVG_NS, 'path');
+            sector.setAttribute('d', this.makeSectorPath(cx, cy, radius, startAngle, endAngle));
+            sector.setAttribute('fill', palette[i % palette.length]);
+            sector.setAttribute('stroke', '#1a1a1a');
+            sector.setAttribute('stroke-width', '2');
+            svg.appendChild(sector);
+            this.appendMemberLabel(svg, pool[i].name, cx, cy, radius, startAngle + step / 2, step);
+        }
+    }
+
+    appendMemberLabel(svg, text, cx, cy, radius, midAngle, step) {
+        let innerR = radius * 0.2, outerR = radius - 14;
+        let textRadius = (innerR + outerR) / 2;
+        let pos = polarToCartesian(cx, cy, textRadius, midAngle);
+        let angularLimit = textRadius * (step * Math.PI / 180) * 0.8;
+        let fontSize = Math.max(9, Math.min(angularLimit, 20));
+        let txt = document.createElementNS(WHEEL_SVG_NS, 'text');
+        txt.setAttribute('x', pos.x);
+        txt.setAttribute('y', pos.y);
+        txt.setAttribute('text-anchor', 'middle');
+        txt.setAttribute('dominant-baseline', 'middle');
+        txt.setAttribute('fill', '#ffffff');
+        txt.setAttribute('font-weight', 'bold');
+        txt.setAttribute('font-size', fontSize);
+        txt.setAttribute('paint-order', 'stroke');
+        txt.setAttribute('stroke', 'rgba(0,0,0,0.55)');
+        txt.setAttribute('stroke-width', Math.max(1, fontSize * 0.1));
+        txt.setAttribute('stroke-linejoin', 'round');
+        txt.setAttribute('transform', 'rotate(' + (midAngle + 180) + ' ' + pos.x + ' ' + pos.y + ')');
+        txt.style.pointerEvents = 'none';
+        txt.textContent = text;
+        svg.appendChild(txt);
+
+        let availLen = outerR - innerR;
+        try {
+            if (txt.getBBox().width > availLen) {
+                let lo = 0, hi = text.length - 1, best = 0;
+                while (lo <= hi) {
+                    let mid = (lo + hi) >> 1;
+                    txt.textContent = text.substring(0, mid) + '…';
+                    if (txt.getBBox().width <= availLen) { best = mid; lo = mid + 1; }
+                    else hi = mid - 1;
+                }
+                txt.textContent = best === 0 ? '…' : text.substring(0, best) + '…';
+            }
+        } catch (e) {}
+    }
+
+    spinMemberRoll() {
+        if (this.rolling) return;
+        let overlay = document.getElementById('memberRollOverlay');
+        let spinner = document.getElementById('memberRollSpinner');
+        let pool = this._rollPool || [];
+        let n = pool.length;
+        if (!overlay || !spinner || n === 0) return;
+
+        this.rolling = true;
+        this.renderMembersPanel();
+        let resultEl = document.getElementById('memberRollResult');
+        let againBtn = document.getElementById('memberRollAgain');
+        if (resultEl) resultEl.hidden = true;
+        if (againBtn) againBtn.hidden = true;
+
+        let step = 360 / n;
+        let pickedIdx = Math.floor(Math.random() * n);
+        let picked = pool[pickedIdx];
+        let midAngle = pickedIdx * step - 90 + step / 2;
+        let randomOffset = (Math.random() - 0.5) * step * 0.6;
+        let targetMod = -90 - midAngle + randomOffset;
+        let normalize = (a) => ((a % 360) + 360) % 360;
+        let delta = normalize(targetMod) - normalize(this._memberRollRotation || 0);
+        if (delta < 0) delta += 360;
+        let totalDelta = delta + 360 * 5;
+        let startRotation = this._memberRollRotation || 0;
+        this._memberRollRotation = startRotation + totalDelta;
+
+        spinner.style.transition = 'none';
+        let startTime = performance.now();
+        let duration = Math.min(this.prefs.spinTimeMs, 3000);
+        let lastTick = 0;
+        let animate = (now) => {
+            if (overlay.hidden) { this.rolling = false; return; }
+            let t = Math.min(1, (now - startTime) / duration);
+            let rot = startRotation + totalDelta * easeOutQuint(t);
+            spinner.style.transform = 'rotate(' + rot + 'deg)';
+            let passed = Math.floor((rot - startRotation) / step);
+            while (lastTick < passed) { lastTick++; playSound('wheel-tick', 0.5); }
+            if (t < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                this.rolling = false;
+                playSound('wheel-land');
+                this.landRolledMember(picked);
+                if (resultEl) { resultEl.hidden = false; resultEl.textContent = '🎲 ' + picked.name; }
+                if (againBtn) againBtn.hidden = false;
+            }
+        };
+        requestAnimationFrame(animate);
+    }
+
+    applyMembersButton() {
+        let btn = document.getElementById('wheelModalMembersBtn');
+        if (btn) btn.hidden = !this.prefs.membersEnabled;
+    }
+
+    toggleMembersPanel() {
+        let panel = document.getElementById('wheelMembersPanel');
+        if (!panel) return;
+        if (panel.hidden) {
+            this.renderMembersPanel();
+            panel.hidden = false;
+            playSound('navigate');
+        } else {
+            this.closeMembersPanel();
+        }
+    }
+
+    closeMembersPanel() {
+        let panel = document.getElementById('wheelMembersPanel');
+        if (panel) panel.hidden = true;
+    }
+
+    renderMembersPanel() {
+        let list = document.getElementById('wheelMembersPanelList');
+        let empty = document.getElementById('wheelMembersPanelEmpty');
+        let rollBtn = document.getElementById('wheelMembersRollBtn');
+        if (!list) return;
+        list.innerHTML = '';
+        let qid = this.selected ? this.selected.id : null;
+
+        if (this.members.length === 0) {
+            if (empty) empty.hidden = false;
+            if (rollBtn) rollBtn.disabled = true;
+            return;
+        }
+        if (empty) empty.hidden = true;
+
+        let pending = qid != null ? this.unansweredMembers(qid).length : this.activeMembers().length;
+        if (rollBtn) rollBtn.disabled = pending === 0 || this.rolling;
+
+        this.members.forEach(m => {
+            let disabled = m.disabled;
+            let answered = !disabled && qid != null && this.isAnswered(qid, m.id);
+            let row = document.createElement('div');
+            row.className = 'wheel-member-row'
+                + (disabled ? ' disabled' : '')
+                + (answered ? ' answered' : '')
+                + (m.id === this.rolledMemberId ? ' rolled' : '');
+            if (!disabled) row.onclick = () => this.toggleAnswered(m.id);
+
+            let check = document.createElement('span');
+            check.className = 'wheel-member-check';
+            check.textContent = answered ? '✓' : '';
+
+            let name = document.createElement('span');
+            name.className = 'wheel-member-name';
+            name.textContent = m.name;
+
+            row.appendChild(check);
+            row.appendChild(name);
+
+            if (disabled) {
+                let tag = document.createElement('span');
+                tag.className = 'wheel-member-disabled-tag';
+                tag.textContent = 'disabled';
+                row.appendChild(tag);
+            } else if (m.id === this.rolledMemberId && !answered) {
+                let tag = document.createElement('span');
+                tag.className = 'wheel-member-rolled-tag';
+                tag.textContent = '🎲';
+                row.appendChild(tag);
+            }
+            list.appendChild(row);
+        });
     }
 
     shuffleWheel() {
@@ -1055,6 +1703,19 @@ class QuestionsWheel {
             }
         }
 
+        if (this.prefs.membersEnabled) {
+            let active = this.activeMembers();
+            if (active.length > 0) {
+                let answeredCount = active.reduce((n, m) => n + (this.isAnswered(question.id, m.id) ? 1 : 0), 0);
+                let badge = document.createElement('span');
+                badge.className = 'wheel-member-progress'
+                    + (answeredCount >= active.length ? ' complete' : '');
+                badge.textContent = answeredCount + '/' + active.length;
+                badge.title = answeredCount + ' of ' + active.length + ' active members answered';
+                item.appendChild(badge);
+            }
+        }
+
         item.appendChild(openBtn);
         item.appendChild(toggle);
 
@@ -1163,6 +1824,8 @@ class QuestionsWheel {
     showQuestionModal(question) {
         this.selected = question;
         this.hintRevealed = false;
+        this.cancelRoll();
+        this.rolledMemberId = null;
 
         let modal = document.getElementById('wheelModal');
         let body = document.getElementById('wheelModalBody');
@@ -1225,6 +1888,16 @@ class QuestionsWheel {
 
         this.applyHintsButton();
         this.refreshModalScore();
+
+        let rollResult = document.getElementById('wheelMembersRollResult');
+        if (rollResult) { rollResult.hidden = true; rollResult.textContent = ''; }
+        this.applyMembersButton();
+        // With the feature on, the roster is shown by default in the question
+        // view; otherwise the panel stays closed.
+        let membersPanel = document.getElementById('wheelMembersPanel');
+        if (membersPanel) membersPanel.hidden = !this.prefs.membersEnabled;
+        this.renderMembersPanel();
+
         modal.hidden = false;
         this.startTimer();
     }
@@ -1285,8 +1958,11 @@ class QuestionsWheel {
 
     closeModal() {
         document.getElementById('wheelModal').hidden = true;
+        this.cancelRoll();
+        this.closeMembersPanel();
         this.selected = null;
         this.hintRevealed = false;
+        this.rolledMemberId = null;
         this.stopTimer();
     }
 

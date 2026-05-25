@@ -629,6 +629,8 @@ function toggleSound(event) {
     document.querySelectorAll('.sound-panel').forEach(p => { if (p !== panel) p.hidden = true; });
     let cfg = document.getElementById('wheelConfigPanel');
     if (cfg) cfg.hidden = true;
+    let members = document.getElementById('wheelMembersManagePanel');
+    if (members) members.hidden = true;
     panel.hidden = !willOpen;
     if (willOpen) _buildSoundPanels();
 }
