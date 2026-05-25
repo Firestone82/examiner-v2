@@ -1139,12 +1139,7 @@ class QuestionsWheel {
             row.appendChild(check);
             row.appendChild(name);
 
-            if (disabled) {
-                let tag = document.createElement('span');
-                tag.className = 'wheel-member-disabled-tag';
-                tag.textContent = 'disabled';
-                row.appendChild(tag);
-            } else if (m.id === this.rolledMemberId && !answered) {
+            if (!disabled && m.id === this.rolledMemberId && !answered) {
                 let tag = document.createElement('span');
                 tag.className = 'wheel-member-rolled-tag';
                 tag.textContent = '🎲';
