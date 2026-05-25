@@ -1211,14 +1211,8 @@ class QuestionsWheel {
             name.className = 'wheel-member-name';
             name.textContent = m.name;
 
-            let count = document.createElement('span');
-            count.className = 'wheel-member-count';
-            count.textContent = '(' + this.answeredCountForMember(m.id) + ')';
-            count.title = 'Questions answered';
-
             row.appendChild(check);
             row.appendChild(name);
-            row.appendChild(count);
 
             if (disabled) {
                 let tag = document.createElement('span');
