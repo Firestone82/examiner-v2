@@ -217,7 +217,7 @@ class QuestionsWheel {
         this.answered = {};
         this.rolledMemberId = null;
         this.rolling = false;
-        this._rollTimer = null;
+        this._rollRaf = null;
 
         let hadSavedState = !!loadWheelState(this.stateName);
         this.restoreState();
@@ -315,12 +315,36 @@ class QuestionsWheel {
         };
 
         // Spacebar triggers spin when the modal is not open
+        let anyOverlayOpen = () => ['wheelMemberDetailModal', 'wheelChoiceModal']
+            .some(id => { let el = document.getElementById(id); return el && !el.hidden; });
+
         document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                let detail = document.getElementById('wheelMemberDetailModal');
+                if (detail && !detail.hidden) { this.closeMemberDetail(); return; }
+                let choice = document.getElementById('wheelChoiceModal');
+                if (choice && !choice.hidden) { this.closeChoice(); return; }
+            }
             if (e.code !== 'Space') return;
             if (!document.getElementById('wheelModal').hidden) return;
+            if (anyOverlayOpen()) return;
             e.preventDefault();
             this.spin();
         });
+
+        let memberDetailClose = document.getElementById('wheelMemberDetailClose');
+        if (memberDetailClose) memberDetailClose.onclick = () => { playSound('next'); this.closeMemberDetail(); };
+        let memberDetailModal = document.getElementById('wheelMemberDetailModal');
+        if (memberDetailModal) memberDetailModal.onclick = (e) => {
+            if (e.target === memberDetailModal) this.closeMemberDetail();
+        };
+
+        let choiceCancel = document.getElementById('wheelChoiceCancel');
+        if (choiceCancel) choiceCancel.onclick = () => { playSound('next'); this.closeChoice(); };
+        let choiceModal = document.getElementById('wheelChoiceModal');
+        if (choiceModal) choiceModal.onclick = (e) => {
+            if (e.target === choiceModal) this.closeChoice();
+        };
 
         // ── Config panel ─────────────────────────────────────────────────────
         let sizeSlider = document.getElementById('wheelSizeSlider');
@@ -561,27 +585,35 @@ class QuestionsWheel {
         }
         this.renderMembersConfig();
 
-        let showPendingBtn = document.getElementById('wheelMembersShowPendingBtn');
-        if (showPendingBtn) showPendingBtn.onclick = () => this.showQuestionsWithPending();
-        let hideAnsweredBtn = document.getElementById('wheelMembersHideAnsweredBtn');
-        if (hideAnsweredBtn) hideAnsweredBtn.onclick = () => this.hideFullyAnsweredQuestions();
+        let showBtn = document.getElementById('wheelMembersShowPendingBtn');
+        if (showBtn) showBtn.onclick = () => this.showChoice('Show questions', [
+            {
+                label: 'Some member hasn\'t answered',
+                desc: 'Show only questions at least one member still hasn\'t answered.',
+                fn: () => this.showOnlyNotFullyAnswered(),
+            },
+            {
+                label: 'Nobody has answered',
+                desc: 'Show only questions that no member has answered yet.',
+                fn: () => this.showOnlyUnansweredByAnyone(),
+            },
+        ]);
+        let hideBtn = document.getElementById('wheelMembersHideAnsweredBtn');
+        if (hideBtn) hideBtn.onclick = () => this.showChoice('Hide questions', [
+            {
+                label: 'Every member has answered',
+                desc: 'Hide questions that all enabled members have already answered.',
+                fn: () => this.hideFullyAnsweredQuestions(),
+            },
+            {
+                label: 'Some member has answered',
+                desc: 'Hide questions that at least one member has answered.',
+                fn: () => this.hideAnsweredBySomeone(),
+            },
+        ]);
 
         let rollBtn = document.getElementById('wheelMembersRollBtn');
         if (rollBtn) rollBtn.onclick = () => this.rollMember();
-
-        let rollCloseBtn = document.getElementById('memberRollClose');
-        if (rollCloseBtn) rollCloseBtn.onclick = () => this.closeMemberRoll();
-        let rollAgainBtn = document.getElementById('memberRollAgain');
-        if (rollAgainBtn) {
-            rollAgainBtn.onclick = () => {
-                if (this.rolling || !this.selected) return;
-                let pool = this.unansweredMembers(this.selected.id);
-                if (pool.length < 2) { this.closeMemberRoll(); return; }
-                this._rollPool = pool;
-                this.renderMemberRollWheel(pool);
-                this.spinMemberRoll();
-            };
-        }
 
         let membersBtn = document.getElementById('wheelModalMembersBtn');
         if (membersBtn) membersBtn.onclick = () => this.toggleMembersPanel();
@@ -666,11 +698,26 @@ class QuestionsWheel {
         this.render();
     }
 
-    // Exports the user's star ratings for the current DLC as a CSV, with one
-    // row per rated question and its group, ordered by group then title.
+    // Exports the star ratings for the current DLC as a text table, one row per
+    // rated question (group + overall rating), plus a column per member showing
+    // that member's own difficulty rating. Ordered by group then title.
     exportRatings() {
         let scores = getAllScores()[currentDlcName] || {};
-        let rated = this.questions.filter(q => (scores[q.id] || 0) > 0);
+
+        // Members who rated at least one question get their own column.
+        let ratingMembers = this.members.filter(m =>
+            this.questions.some(q => getMemberQuestionScore(q.id, m.id) > 0));
+
+        // Overall rating shown to the user: manual override, else member average.
+        let overallOf = q => {
+            let manual = scores[q.id] || 0;
+            return manual > 0 ? manual : getMemberAverageScore(q.id);
+        };
+
+        // A question is exportable if it has an overall rating or any member
+        // left a rating for it.
+        let rated = this.questions.filter(q =>
+            overallOf(q) > 0 || ratingMembers.some(m => getMemberQuestionScore(q.id, m.id) > 0));
         if (rated.length === 0) {
             alert('No star ratings to export yet.');
             return;
@@ -695,9 +742,16 @@ class QuestionsWheel {
         });
 
         let cell = v => String(v === undefined || v === null ? '' : v).replace(/[\r\n\t]+/g, ' ');
-        let headers = ['Group', 'ID', 'Question', 'Rating'];
-        let alignRight = [false, true, false, true];
-        let rows = sorted.map(q => [groupNameOf(q), q.id, titleOf(q), scores[q.id]].map(cell));
+        let headers = ['Group', 'ID', 'Question', 'Rating', ...ratingMembers.map(m => m.name)];
+        let alignRight = [false, true, false, true, ...ratingMembers.map(() => true)];
+        let rows = sorted.map(q => {
+            let base = [groupNameOf(q), q.id, titleOf(q), overallOf(q)];
+            let memberCells = ratingMembers.map(m => {
+                let s = getMemberQuestionScore(q.id, m.id);
+                return s > 0 ? s : '';
+            });
+            return base.concat(memberCells).map(cell);
+        });
 
         let widths = headers.map((h, i) =>
             Math.max(h.length, ...rows.map(r => r[i].length)));
@@ -772,6 +826,7 @@ class QuestionsWheel {
             if (this.answered[qid].length === 0) delete this.answered[qid];
         });
         if (this.rolledMemberId === id) this.rolledMemberId = null;
+        removeMemberScores(id);
         this.persistState();
         this.renderMembersConfig();
         this.renderMembersPanel();
@@ -852,9 +907,10 @@ class QuestionsWheel {
             toggle.onclick = () => this.setMemberDisabled(m.id, !m.disabled);
 
             let count = document.createElement('span');
-            count.className = 'wheel-member-count';
+            count.className = 'wheel-member-count clickable';
             count.textContent = '(' + this.answeredCountForMember(m.id) + ')';
-            count.title = 'Questions answered';
+            count.title = 'Show answered questions by category';
+            count.onclick = () => this.showMemberAnswers(m.id);
 
             let del = document.createElement('button');
             del.type = 'button';
@@ -889,23 +945,163 @@ class QuestionsWheel {
         return n;
     }
 
+    // Opens a breakdown of the questions a member has answered, bucketed by
+    // category (in the wheel's group order). Each row also shows the member's
+    // own difficulty rating for that question when scoring is on.
+    showMemberAnswers(memberId) {
+        let member = this.members.find(m => m.id === memberId);
+        let modal = document.getElementById('wheelMemberDetailModal');
+        let titleEl = document.getElementById('wheelMemberDetailTitle');
+        let body = document.getElementById('wheelMemberDetailBody');
+        if (!member || !modal || !body) return;
+
+        if (titleEl) titleEl.textContent = member.name;
+        body.innerHTML = '';
+
+        let titleOf = q => (q.question && q.question.title) || ('Question #' + q.id);
+        let groupNameOf = q => {
+            let g = this.findGroup(this.questionGroups[q.id]);
+            return g ? g.name : 'Ungrouped';
+        };
+
+        let answered = this.questions.filter(q => this.isAnswered(q.id, memberId));
+        if (answered.length === 0) {
+            let empty = document.createElement('div');
+            empty.className = 'wheel-member-detail-empty';
+            empty.textContent = member.name + ' hasn\'t answered any questions yet.';
+            body.appendChild(empty);
+            modal.hidden = false;
+            playSound('navigate');
+            return;
+        }
+
+        let groupOrder = {};
+        this.groups.forEach((g, i) => { groupOrder[g.name] = i; });
+        let orderIndex = name => (name in groupOrder ? groupOrder[name] : this.groups.length);
+
+        let buckets = {};
+        answered.forEach(q => {
+            let name = groupNameOf(q);
+            (buckets[name] = buckets[name] || []).push(q);
+        });
+        let groupNames = Object.keys(buckets).sort((a, b) => {
+            let oa = orderIndex(a), ob = orderIndex(b);
+            return oa !== ob ? oa - ob : a.localeCompare(b);
+        });
+
+        let summary = document.createElement('div');
+        summary.className = 'wheel-member-detail-summary';
+        summary.textContent = answered.length + ' question'
+            + (answered.length === 1 ? '' : 's') + ' answered';
+        body.appendChild(summary);
+
+        groupNames.forEach(name => {
+            let qs = buckets[name].slice().sort((a, b) => titleOf(a).localeCompare(titleOf(b)));
+            let grpObj = this.groups.find(g => g.name === name);
+
+            let section = document.createElement('div');
+            section.className = 'wheel-member-detail-group';
+
+            let head = document.createElement('div');
+            head.className = 'wheel-member-detail-group-head';
+            let dot = document.createElement('span');
+            dot.className = 'wheel-member-detail-dot';
+            dot.style.background = (grpObj && typeof grpObj.color === 'string')
+                ? grpObj.color : this.colorFor(qs[0]);
+            let gname = document.createElement('span');
+            gname.className = 'wheel-member-detail-group-name';
+            gname.textContent = name;
+            let gcount = document.createElement('span');
+            gcount.className = 'wheel-member-detail-group-count';
+            gcount.textContent = '(' + qs.length + ')';
+            head.appendChild(dot);
+            head.appendChild(gname);
+            head.appendChild(gcount);
+            section.appendChild(head);
+
+            qs.forEach(q => {
+                let row = document.createElement('div');
+                row.className = 'wheel-member-detail-row';
+                let t = document.createElement('span');
+                t.className = 'wheel-member-detail-q';
+                t.textContent = titleOf(q);
+                row.appendChild(t);
+                if (isScoringEnabled()) {
+                    let rating = getMemberQuestionScore(q.id, memberId);
+                    if (rating > 0) {
+                        let r = document.createElement('span');
+                        r.className = 'wheel-member-detail-rating';
+                        r.textContent = '★' + rating;
+                        r.title = rating + ' / 5';
+                        row.appendChild(r);
+                    }
+                }
+                section.appendChild(row);
+            });
+            body.appendChild(section);
+        });
+
+        modal.hidden = false;
+        playSound('navigate');
+    }
+
+    closeMemberDetail() {
+        let modal = document.getElementById('wheelMemberDetailModal');
+        if (modal) modal.hidden = true;
+    }
+
+    // Small choice dialog. options is [{ label, desc, fn }]; picking one closes
+    // the dialog and runs its fn. Used by the Show/Hide question filters.
+    showChoice(title, options) {
+        let modal = document.getElementById('wheelChoiceModal');
+        let titleEl = document.getElementById('wheelChoiceTitle');
+        let optsEl = document.getElementById('wheelChoiceOptions');
+        if (!modal || !optsEl) return;
+
+        if (titleEl) titleEl.textContent = title;
+        optsEl.innerHTML = '';
+        options.forEach(opt => {
+            let btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'wheel-choice-option';
+            let label = document.createElement('span');
+            label.className = 'wheel-choice-option-label';
+            label.textContent = opt.label;
+            btn.appendChild(label);
+            if (opt.desc) {
+                let d = document.createElement('span');
+                d.className = 'wheel-choice-option-desc';
+                d.textContent = opt.desc;
+                btn.appendChild(d);
+            }
+            btn.onclick = () => { this.closeChoice(); opt.fn(); };
+            optsEl.appendChild(btn);
+        });
+        modal.hidden = false;
+        playSound('navigate');
+    }
+
+    closeChoice() {
+        let modal = document.getElementById('wheelChoiceModal');
+        if (modal) modal.hidden = true;
+    }
+
     // Members currently in the rotation (disabled ones are sat out).
     activeMembers() {
         return this.members.filter(m => !m.disabled);
     }
 
     // Bulk visibility helpers driven by member-answered state.
-    // Un-hide every question that still has at least one enabled member who
-    // hasn't answered it.
-    showQuestionsWithPending() {
+    // Show only questions that aren't fully answered yet (at least one enabled
+    // member still hasn't answered them); hide the fully-answered rest.
+    showOnlyNotFullyAnswered() {
         if (this.spinning) return;
         if (this.activeMembers().length === 0) return;
         let changed = false;
         this.questions.forEach(q => {
-            if (this.hidden.has(q.id) && !this.allAnswered(q.id)) {
-                this.hidden.delete(q.id);
-                changed = true;
-            }
+            let full = this.allAnswered(q.id);
+            if (full && !this.hidden.has(q.id)) { this.hidden.add(q.id); changed = true; }
+            else if (!full && this.hidden.has(q.id)) { this.hidden.delete(q.id); changed = true; }
         });
         if (changed) this.resetSpinner();
         this.render();
@@ -926,6 +1122,41 @@ class QuestionsWheel {
         if (changed) this.resetSpinner();
         this.render();
         playSound(changed ? 'deselect' : 'select');
+    }
+
+    // Hide every question that at least one member has answered.
+    hideAnsweredBySomeone() {
+        if (this.spinning) return;
+        let changed = false;
+        this.questions.forEach(q => {
+            if (!this.hidden.has(q.id) && this.answeredIds(q.id).length > 0) {
+                this.hidden.add(q.id);
+                changed = true;
+            }
+        });
+        if (changed) this.resetSpinner();
+        this.render();
+        playSound(changed ? 'deselect' : 'select');
+    }
+
+    // Leave only the questions that nobody has answered yet on the wheel: show
+    // those with zero answers and hide every question with at least one answer.
+    showOnlyUnansweredByAnyone() {
+        if (this.spinning) return;
+        let changed = false;
+        this.questions.forEach(q => {
+            let answeredByAny = this.answeredIds(q.id).length > 0;
+            if (answeredByAny && !this.hidden.has(q.id)) {
+                this.hidden.add(q.id);
+                changed = true;
+            } else if (!answeredByAny && this.hidden.has(q.id)) {
+                this.hidden.delete(q.id);
+                changed = true;
+            }
+        });
+        if (changed) this.resetSpinner();
+        this.render();
+        playSound(changed ? 'select' : 'deselect');
     }
 
     unansweredMembers(qid) {
@@ -1000,157 +1231,90 @@ class QuestionsWheel {
             return;
         }
 
-        this.openMemberRoll(pool);
+        this.animateMemberRoll(pool);
     }
 
-    // Records the roll result on the side panel (and highlights the member).
+    // Marks the rolled member; the panel row highlight and 🎲 tag are enough to
+    // show who was picked, so no separate result banner is shown.
     landRolledMember(member) {
         this.rolledMemberId = member.id;
-        let resultEl = document.getElementById('wheelMembersRollResult');
-        if (resultEl) { resultEl.hidden = false; resultEl.textContent = '🎲 ' + member.name; }
-        this.renderMembersPanel();
-    }
-
-    // Opens the spinning member wheel over the question modal and spins it.
-    openMemberRoll(pool) {
-        let overlay = document.getElementById('memberRollOverlay');
-        if (!overlay) { this.landRolledMember(pool[Math.floor(Math.random() * pool.length)]); return; }
-        this._rollPool = pool;
-        this._memberRollRotation = 0;
-        let spinner = document.getElementById('memberRollSpinner');
-        if (spinner) { spinner.style.transition = 'none'; spinner.style.transform = 'rotate(0deg)'; }
-        let resultEl = document.getElementById('memberRollResult');
-        if (resultEl) { resultEl.hidden = true; resultEl.textContent = ''; }
-        let againBtn = document.getElementById('memberRollAgain');
-        if (againBtn) againBtn.hidden = true;
-        this.renderMemberRollWheel(pool);
-        overlay.hidden = false;
-        requestAnimationFrame(() => this.spinMemberRoll());
-    }
-
-    closeMemberRoll() {
-        this.cancelRoll();
-        playSound('next');
         this.renderMembersPanel();
     }
 
     cancelRoll() {
-        if (this._rollTimer) { clearTimeout(this._rollTimer); this._rollTimer = null; }
+        if (this._rollRaf) { cancelAnimationFrame(this._rollRaf); this._rollRaf = null; }
         this.rolling = false;
-        let overlay = document.getElementById('memberRollOverlay');
-        if (overlay) overlay.hidden = true;
+        this.clearRollHighlight();
     }
 
-    renderMemberRollWheel(pool) {
-        let svg = document.getElementById('memberRollSvg');
-        if (!svg) return;
-        while (svg.firstChild) svg.removeChild(svg.firstChild);
-        let cx = 200, cy = 200, radius = 192;
+    clearRollHighlight() {
+        let list = document.getElementById('wheelMembersPanelList');
+        if (list) list.querySelectorAll('.wheel-member-row.rolling')
+            .forEach(r => r.classList.remove('rolling'));
+    }
+
+    // Picks a random member by sweeping a highlight down the member list —
+    // fast at first, then easing to a stop on the winner. The sweep lasts as
+    // long as a wheel spin (prefs.spinTimeMs).
+    animateMemberRoll(pool) {
         let n = pool.length;
-        let palette = ['#e53935', '#1e88e5', '#43a047', '#fb8c00', '#8e24aa',
-                       '#00897b', '#fdd835', '#6d4c41', '#d81b60', '#3949ab'];
-        let step = 360 / n;
-        for (let i = 0; i < n; i++) {
-            let startAngle = i * step - 90;
-            let endAngle = startAngle + step;
-            let sector = document.createElementNS(WHEEL_SVG_NS, 'path');
-            sector.setAttribute('d', this.makeSectorPath(cx, cy, radius, startAngle, endAngle));
-            sector.setAttribute('fill', palette[i % palette.length]);
-            sector.setAttribute('stroke', '#1a1a1a');
-            sector.setAttribute('stroke-width', '2');
-            svg.appendChild(sector);
-            this.appendMemberLabel(svg, pool[i].name, cx, cy, radius, startAngle + step / 2, step);
-        }
-    }
-
-    appendMemberLabel(svg, text, cx, cy, radius, midAngle, step) {
-        let innerR = radius * 0.2, outerR = radius - 14;
-        let textRadius = (innerR + outerR) / 2;
-        let pos = polarToCartesian(cx, cy, textRadius, midAngle);
-        let angularLimit = textRadius * (step * Math.PI / 180) * 0.8;
-        let fontSize = Math.max(9, Math.min(angularLimit, 20));
-        let txt = document.createElementNS(WHEEL_SVG_NS, 'text');
-        txt.setAttribute('x', pos.x);
-        txt.setAttribute('y', pos.y);
-        txt.setAttribute('text-anchor', 'middle');
-        txt.setAttribute('dominant-baseline', 'middle');
-        txt.setAttribute('fill', '#ffffff');
-        txt.setAttribute('font-weight', 'bold');
-        txt.setAttribute('font-size', fontSize);
-        txt.setAttribute('paint-order', 'stroke');
-        txt.setAttribute('stroke', 'rgba(0,0,0,0.55)');
-        txt.setAttribute('stroke-width', Math.max(1, fontSize * 0.1));
-        txt.setAttribute('stroke-linejoin', 'round');
-        txt.setAttribute('transform', 'rotate(' + (midAngle + 180) + ' ' + pos.x + ' ' + pos.y + ')');
-        txt.style.pointerEvents = 'none';
-        txt.textContent = text;
-        svg.appendChild(txt);
-
-        let availLen = outerR - innerR;
-        try {
-            if (txt.getBBox().width > availLen) {
-                let lo = 0, hi = text.length - 1, best = 0;
-                while (lo <= hi) {
-                    let mid = (lo + hi) >> 1;
-                    txt.textContent = text.substring(0, mid) + '…';
-                    if (txt.getBBox().width <= availLen) { best = mid; lo = mid + 1; }
-                    else hi = mid - 1;
-                }
-                txt.textContent = best === 0 ? '…' : text.substring(0, best) + '…';
-            }
-        } catch (e) {}
-    }
-
-    spinMemberRoll() {
-        if (this.rolling) return;
-        let overlay = document.getElementById('memberRollOverlay');
-        let spinner = document.getElementById('memberRollSpinner');
-        let pool = this._rollPool || [];
-        let n = pool.length;
-        if (!overlay || !spinner || n === 0) return;
-
+        let prevId = this.rolledMemberId;
         this.rolling = true;
-        this.renderMembersPanel();
-        let resultEl = document.getElementById('memberRollResult');
-        let againBtn = document.getElementById('memberRollAgain');
+        this.rolledMemberId = null;
+        let resultEl = document.getElementById('wheelMembersRollResult');
         if (resultEl) resultEl.hidden = true;
-        if (againBtn) againBtn.hidden = true;
+        // Re-render so the Roll button is disabled and rows carry member ids.
+        this.renderMembersPanel();
 
-        let step = 360 / n;
-        let pickedIdx = Math.floor(Math.random() * n);
+        let list = document.getElementById('wheelMembersPanelList');
+        let rowFor = (id) => list
+            ? Array.from(list.children).find(r => r.dataset && r.dataset.memberId === id)
+            : null;
+
+        // Weighted random pick: every candidate can win, so the result stays
+        // unpredictable, but the member picked last time gets a much smaller
+        // weight so the roll doesn't keep landing on the same name (and small
+        // rosters don't degenerate into a deterministic alternation).
+        let weights = pool.map(m => (m.id === prevId ? 0.2 : 1));
+        let totalWeight = weights.reduce((a, b) => a + b, 0);
+        let r = Math.random() * totalWeight;
+        let pickedIdx = n - 1;
+        for (let i = 0; i < n; i++) {
+            r -= weights[i];
+            if (r < 0) { pickedIdx = i; break; }
+        }
         let picked = pool[pickedIdx];
-        let midAngle = pickedIdx * step - 90 + step / 2;
-        let randomOffset = (Math.random() - 0.5) * step * 0.6;
-        let targetMod = -90 - midAngle + randomOffset;
-        let normalize = (a) => ((a % 360) + 360) % 360;
-        let delta = normalize(targetMod) - normalize(this._memberRollRotation || 0);
-        if (delta < 0) delta += 360;
-        let totalDelta = delta + 360 * 5;
-        let startRotation = this._memberRollRotation || 0;
-        this._memberRollRotation = startRotation + totalDelta;
-
-        spinner.style.transition = 'none';
+        // At least three full passes, ending on the winner. The winner is held
+        // through the slow tail of the deceleration (rather than being ticked
+        // onto at the very end) so the highlight comes to rest on it.
+        let totalSteps = n * 3 + pickedIdx;
+        let duration = Math.max(300, this.prefs.spinTimeMs);
         let startTime = performance.now();
-        let duration = Math.min(this.prefs.spinTimeMs, 3000);
-        let lastTick = 0;
+        let lastStep = -1;
+
         let animate = (now) => {
-            if (overlay.hidden) { this.rolling = false; return; }
+            if (!this.rolling) { this.clearRollHighlight(); return; }
             let t = Math.min(1, (now - startTime) / duration);
-            let rot = startRotation + totalDelta * easeOutQuint(t);
-            spinner.style.transform = 'rotate(' + rot + 'deg)';
-            let passed = Math.floor((rot - startRotation) / step);
-            while (lastTick < passed) { lastTick++; playSound('wheel-tick', 0.5); }
-            if (t < 1) {
-                requestAnimationFrame(animate);
-            } else {
+            let step = Math.min(totalSteps, Math.floor(easeOutQuint(t) * (totalSteps + 1)));
+            if (step !== lastStep) {
+                lastStep = step;
+                this.clearRollHighlight();
+                let row = rowFor(pool[step % n].id);
+                if (row) row.classList.add('rolling');
+                playSound('wheel-tick', 0.5);
+            }
+            // Land as soon as the highlight reaches the winner — don't sit on it
+            // waiting out the flat tail of the easing curve.
+            if (step >= totalSteps || t >= 1) {
+                this._rollRaf = null;
                 this.rolling = false;
                 playSound('wheel-land');
                 this.landRolledMember(picked);
-                if (resultEl) { resultEl.hidden = false; resultEl.textContent = '🎲 ' + picked.name; }
-                if (againBtn) againBtn.hidden = false;
+            } else {
+                this._rollRaf = requestAnimationFrame(animate);
             }
         };
-        requestAnimationFrame(animate);
+        this._rollRaf = requestAnimationFrame(animate);
     }
 
     applyMembersButton() {
@@ -1201,6 +1365,7 @@ class QuestionsWheel {
                 + (disabled ? ' disabled' : '')
                 + (answered ? ' answered' : '')
                 + (m.id === this.rolledMemberId ? ' rolled' : '');
+            row.dataset.memberId = m.id;
             if (!disabled) row.onclick = () => this.toggleAnswered(m.id);
 
             let check = document.createElement('span');
@@ -1214,17 +1379,22 @@ class QuestionsWheel {
             row.appendChild(check);
             row.appendChild(name);
 
-            if (disabled) {
-                let tag = document.createElement('span');
-                tag.className = 'wheel-member-disabled-tag';
-                tag.textContent = 'disabled';
-                row.appendChild(tag);
-            } else if (m.id === this.rolledMemberId && !answered) {
+            if (!disabled && m.id === this.rolledMemberId && !answered) {
                 let tag = document.createElement('span');
                 tag.className = 'wheel-member-rolled-tag';
                 tag.textContent = '🎲';
                 row.appendChild(tag);
             }
+
+            // Each member rates how hard the current question was; the average
+            // feeds the question's overall rating.
+            if (qid != null && isScoringEnabled()) {
+                row.appendChild(buildMemberStarWidget(qid, m.id, () => {
+                    this.refreshModalScore();
+                    this.renderSidebar();
+                }));
+            }
+
             list.appendChild(row);
         });
     }
@@ -1665,25 +1835,25 @@ class QuestionsWheel {
         item.className = 'wheel-question-item' + (isHidden ? ' off' : '');
         item.onclick = () => this.toggleQuestion(question.id);
 
-        let dot = document.createElement('span');
+        // The colored dot doubles as the "open" control: it shows the
+        // question's category color at rest and turns into an eye on hover.
+        // Clicking it opens the question as if it was picked.
+        let dot = document.createElement('button');
+        dot.type = 'button';
         dot.className = 'wheel-question-color';
-        dot.style.background = this.colorFor(question);
-
-        let titleEl = document.createElement('span');
-        titleEl.className = 'wheel-question-title';
-        titleEl.textContent = title;
-
-        let openBtn = document.createElement('button');
-        openBtn.type = 'button';
-        openBtn.className = 'wheel-question-open';
-        openBtn.title = 'Open question';
-        openBtn.innerHTML = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/></svg>";
-        openBtn.onclick = (e) => {
+        dot.style.setProperty('--q-color', this.colorFor(question));
+        dot.title = 'Open question';
+        dot.innerHTML = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/></svg>";
+        dot.onclick = (e) => {
             e.stopPropagation();
             if (this.spinning) return;
             playSound('select');
             this.showQuestionModal(question);
         };
+
+        let titleEl = document.createElement('span');
+        titleEl.className = 'wheel-question-title';
+        titleEl.textContent = title;
 
         let toggle = document.createElement('span');
         toggle.className = 'wheel-question-toggle';
@@ -1693,12 +1863,15 @@ class QuestionsWheel {
         item.appendChild(titleEl);
 
         if (isScoringEnabled()) {
-            let score = getQuestionScore(question.id);
+            let manual = getQuestionScore(question.id);
+            let score = manual > 0 ? manual : getMemberAverageScore(question.id);
             if (score > 0) {
                 let badge = document.createElement('span');
-                badge.className = 'wheel-question-score';
+                badge.className = 'wheel-question-score' + (manual > 0 ? '' : ' is-average');
                 badge.textContent = '★' + score;
-                badge.title = score + ' / 5';
+                badge.title = manual > 0
+                    ? score + ' / 5 (manual)'
+                    : score + ' / 5 (average of ' + getMemberScoreCount(question.id) + ' members)';
                 item.appendChild(badge);
             }
         }
@@ -1716,7 +1889,6 @@ class QuestionsWheel {
             }
         }
 
-        item.appendChild(openBtn);
         item.appendChild(toggle);
 
         // Hover tooltip shows the long question text (the title in the row

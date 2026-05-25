@@ -147,7 +147,88 @@ function clearAllScoresForDlc() {
             console.warn('Could not clear scores:', e);
         }
     }
+    clearAllMemberScoresForDlc();
 }
+
+// Per-member, per-question difficulty ratings. Members rate how hard a question
+// was; their average becomes the question's overall rating unless the host has
+// set a manual override (the plain question score above).
+//   { [dlcName]: { [qid]: { [memberId]: stars } } }
+const MEMBER_SCORES_KEY = 'examiner_wheel_member_scores';
+
+function getAllMemberScores() {
+    try {
+        return JSON.parse(localStorage.getItem(MEMBER_SCORES_KEY)) || {};
+    } catch { return {}; }
+}
+
+function saveAllMemberScores(all) {
+    try {
+        localStorage.setItem(MEMBER_SCORES_KEY, JSON.stringify(all));
+    } catch (e) {
+        console.warn('Could not save member scores:', e);
+    }
+}
+
+function getMemberScoresForQuestion(qid) {
+    let dlc = getAllMemberScores()[currentDlcName];
+    return (dlc && dlc[qid]) || {};
+}
+
+function getMemberQuestionScore(qid, memberId) {
+    return getMemberScoresForQuestion(qid)[memberId] || 0;
+}
+
+function setMemberQuestionScore(qid, memberId, score) {
+    let all = getAllMemberScores();
+    if (!all[currentDlcName]) all[currentDlcName] = {};
+    if (!all[currentDlcName][qid]) all[currentDlcName][qid] = {};
+    if (score > 0) all[currentDlcName][qid][memberId] = score;
+    else delete all[currentDlcName][qid][memberId];
+    if (Object.keys(all[currentDlcName][qid]).length === 0) delete all[currentDlcName][qid];
+    if (Object.keys(all[currentDlcName]).length === 0) delete all[currentDlcName];
+    saveAllMemberScores(all);
+}
+
+// Drops every rating a member left, across all questions of the current DLC.
+// Called when a member is removed so their ratings stop skewing the average.
+function removeMemberScores(memberId) {
+    let all = getAllMemberScores();
+    let dlc = all[currentDlcName];
+    if (!dlc) return;
+    let changed = false;
+    Object.keys(dlc).forEach(qid => {
+        if (dlc[qid][memberId] != null) {
+            delete dlc[qid][memberId];
+            changed = true;
+        }
+        if (Object.keys(dlc[qid]).length === 0) delete dlc[qid];
+    });
+    if (Object.keys(dlc).length === 0) delete all[currentDlcName];
+    if (changed) saveAllMemberScores(all);
+}
+
+function clearAllMemberScoresForDlc() {
+    let all = getAllMemberScores();
+    if (currentDlcName && all[currentDlcName]) {
+        delete all[currentDlcName];
+        saveAllMemberScores(all);
+    }
+}
+
+function getMemberScoreCount(qid) {
+    return Object.values(getMemberScoresForQuestion(qid)).filter(v => v > 0).length;
+}
+
+// Average of all member ratings for a question (rounded to the nearest half
+// star so it lines up with the half-star widget). 0 when nobody has rated.
+function getMemberAverageScore(qid) {
+    let vals = Object.values(getMemberScoresForQuestion(qid)).filter(v => v > 0);
+    if (vals.length === 0) return 0;
+    let avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+    return Math.round(avg * 2) / 2;
+}
+
 
 // ── Session persistence ──────────────────────────────────────────────────────
 

@@ -1188,10 +1188,40 @@ p.answer.dismissed {
 
 .wheel-question-color {
     flex-shrink: 0;
-    width: 14px;
-    height: 14px;
+    appearance: none;
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    padding: 0;
     border-radius: 50%;
     border: 1px solid rgba(255,255,255,0.15);
+    background: var(--q-color);
+    color: var(--q-color);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.1s, color 0.1s, transform 0.1s, border-color 0.1s;
+}
+
+.wheel-question-color svg {
+    display: none;
+    width: 13px;
+    height: 13px;
+}
+
+/* On row hover the dot drops its color fill and reveals an eye to open. */
+.wheel-question-item:hover .wheel-question-color {
+    background: transparent;
+    border-color: transparent;
+}
+
+.wheel-question-item:hover .wheel-question-color svg {
+    display: block;
+}
+
+.wheel-question-color:hover {
+    transform: scale(1.15);
 }
 
 .wheel-question-title {
@@ -1199,35 +1229,6 @@ p.answer.dismissed {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-}
-
-.wheel-question-open {
-    flex-shrink: 0;
-    background: none;
-    border: none;
-    padding: 0;
-    margin: 0;
-    cursor: pointer;
-    color: #959595;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    transition: opacity 0.1s, color 0.1s;
-}
-
-.wheel-question-item:hover .wheel-question-open {
-    opacity: 1;
-}
-
-.wheel-question-open:hover {
-    color: #1e87f0;
-}
-
-.wheel-question-open svg {
-    display: block;
-    width: 1rem;
-    height: 1rem;
 }
 
 .wheel-question-toggle {
@@ -1854,17 +1855,6 @@ p.answer.dismissed {
     border-color: #444;
 }
 
-.wheel-member-disabled-tag {
-    flex-shrink: 0;
-    font-size: 0.62rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: #888;
-    border: 1px solid #444;
-    border-radius: 3px;
-    padding: 0.05rem 0.3rem;
-}
-
 .wheel-member-check {
     flex-shrink: 0;
     width: 1.1rem;
@@ -1896,6 +1886,144 @@ p.answer.dismissed {
     font-size: 0.72rem;
     font-weight: bold;
     white-space: nowrap;
+}
+
+.wheel-member-count.clickable {
+    cursor: pointer;
+    border-radius: 3px;
+    padding: 0.05rem 0.25rem;
+    transition: color 0.12s, background 0.12s;
+}
+
+.wheel-member-count.clickable:hover {
+    color: #cfe0f0;
+    background: #2b3340;
+}
+
+/* ── Member answered-questions breakdown modal ─────────────────────────────── */
+
+#wheelMemberDetailModal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 1200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+#wheelMemberDetailModal[hidden] { display: none; }
+
+#wheelMemberDetailContent {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    max-width: 560px;
+    width: 100%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.wheel-member-detail-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid #2e2e2e;
+    font-size: 1.05rem;
+    font-weight: bold;
+    color: #eee;
+}
+
+.wheel-member-detail-close {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: #999;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 0.25rem;
+    transition: color 0.12s;
+}
+
+.wheel-member-detail-close:hover { color: #fff; }
+
+.wheel-member-detail-body {
+    padding: 0.6rem 1rem 1rem;
+    overflow-y: auto;
+}
+
+.wheel-member-detail-summary {
+    color: #8899aa;
+    font-size: 0.78rem;
+    margin: 0.2rem 0 0.7rem;
+}
+
+.wheel-member-detail-empty {
+    color: #888;
+    font-size: 0.9rem;
+    padding: 0.8rem 0;
+}
+
+.wheel-member-detail-group {
+    margin-bottom: 0.9rem;
+}
+
+.wheel-member-detail-group-head {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding-bottom: 0.3rem;
+    border-bottom: 1px solid #2a2a2a;
+    margin-bottom: 0.35rem;
+}
+
+.wheel-member-detail-dot {
+    flex-shrink: 0;
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 50%;
+}
+
+.wheel-member-detail-group-name {
+    flex: 1;
+    font-weight: bold;
+    color: #ddd;
+    font-size: 0.9rem;
+}
+
+.wheel-member-detail-group-count {
+    flex-shrink: 0;
+    color: #777;
+    font-size: 0.75rem;
+}
+
+.wheel-member-detail-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0 0.25rem 1.15rem;
+    color: #cfcfcf;
+    font-size: 0.84rem;
+}
+
+.wheel-member-detail-q {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wheel-member-detail-rating {
+    flex-shrink: 0;
+    color: #ffb300;
+    font-size: 0.78rem;
+    font-weight: bold;
 }
 
 .wheel-member-rolled-tag {
@@ -1937,6 +2065,103 @@ p.answer.dismissed {
     flex-direction: column;
     gap: 0.35rem;
     padding: 0 0.9rem 0.7rem;
+}
+
+.wheel-members-action-row {
+    display: flex;
+    gap: 0.35rem;
+}
+
+.wheel-members-action-row .wheel-members-action-btn {
+    flex: 1;
+    min-width: 0;
+}
+
+/* ── Show/Hide question filter choice dialog ───────────────────────────────── */
+
+#wheelChoiceModal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 1200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+#wheelChoiceModal[hidden] { display: none; }
+
+#wheelChoiceContent {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    max-width: 420px;
+    width: 100%;
+    padding: 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+}
+
+.wheel-choice-title {
+    font-size: 1.05rem;
+    font-weight: bold;
+    color: #eee;
+}
+
+.wheel-choice-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.wheel-choice-option {
+    text-align: left;
+    background: #242424;
+    border: 1px solid #333;
+    border-radius: 6px;
+    color: #ddd;
+    font-family: inherit;
+    cursor: pointer;
+    padding: 0.6rem 0.7rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    transition: background 0.12s, border-color 0.12s;
+}
+
+.wheel-choice-option:hover {
+    background: #2e2e2e;
+    border-color: #1e87f0;
+}
+
+.wheel-choice-option-label {
+    font-weight: bold;
+    font-size: 0.9rem;
+    color: #fff;
+}
+
+.wheel-choice-option-desc {
+    font-size: 0.78rem;
+    color: #99a6b0;
+}
+
+.wheel-choice-cancel {
+    align-self: flex-end;
+    background: none;
+    border: 1px solid #444;
+    color: #aaa;
+    border-radius: 4px;
+    padding: 0.35rem 0.9rem;
+    cursor: pointer;
+    font-family: inherit;
+    transition: color 0.12s, border-color 0.12s;
+}
+
+.wheel-choice-cancel:hover {
+    color: #fff;
+    border-color: #888;
 }
 
 .wheel-members-action-btn {
@@ -2071,108 +2296,34 @@ p.answer.dismissed {
     color: #4caf50;
 }
 
-/* ── Member roll wheel (spins over the question modal) ─────────────────────── */
+/* ── Member roll (highlight sweeps down the member list) ───────────────────── */
 
-#memberRollOverlay {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 0, 0, 0.82);
-    z-index: 1100;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
+.wheel-member-row.rolling {
+    background: #3a3320;
+    border-color: #ffb300;
+    box-shadow: 0 0 0 1px #ffb300 inset;
 }
 
-#memberRollOverlay[hidden] { display: none; }
-
-#memberRollBox {
-    background: #1a1a1a;
-    border: 1px solid #333;
-    border-radius: 10px;
-    padding: 1.4rem 1.6rem 1.2rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1rem;
-    max-width: 92vw;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+/* Per-member difficulty stars inside a panel row. */
+.member-score-stars {
+    flex-shrink: 0;
+    margin-left: auto;
+    gap: 0.05rem;
 }
 
-.member-roll-title {
-    color: #cfcfcf;
+.member-score-stars .score-star {
     font-size: 0.95rem;
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
 }
 
-.member-roll-stage {
-    position: relative;
-    width: 320px;
-    height: 320px;
-    max-width: 78vw;
-    max-height: 78vw;
+/* The overall-rating widget shows a faded (derived) value when it's the
+   member average rather than a manual override. */
+.score-stars.is-average .score-star-fill {
+    color: #b07d1f;
 }
 
-.member-roll-spinner {
-    position: absolute;
-    inset: 0;
-    will-change: transform;
-}
-
-.member-roll-spinner svg {
-    width: 100%;
-    height: 100%;
-    display: block;
-}
-
-.member-roll-pointer {
-    position: absolute;
-    top: -4px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 0;
-    height: 0;
-    border-left: 14px solid transparent;
-    border-right: 14px solid transparent;
-    border-top: 24px solid #ffffff;
-    z-index: 3;
-    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
-}
-
-.member-roll-hub {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 54px;
-    height: 54px;
-    border-radius: 50%;
-    background: #161616;
-    border: 3px solid #2a2a2a;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    z-index: 2;
-}
-
-.member-roll-result {
-    color: #7fbcff;
-    font-size: 1.35rem;
-    font-weight: bold;
-    min-height: 1.4em;
-}
-
-.member-roll-result[hidden] { display: none; }
-
-.member-roll-buttons {
-    display: flex;
-    gap: 0.6rem;
-}
-
-.member-roll-buttons button {
-    color: #fff !important;
+.score-note {
+    color: #888;
+    font-size: 0.72rem;
 }
 
 @media (max-width: 600px) {
@@ -2362,6 +2513,13 @@ p.answer.dismissed {
 .score-clear:hover {
     color: #fff;
     border-color: #888;
+}
+
+.score-clear:disabled {
+    opacity: 0.4;
+    cursor: default;
+    color: #888;
+    border-color: #444;
 }
 
 /* Self-rating inside the wheel modal */

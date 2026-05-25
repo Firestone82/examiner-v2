@@ -232,8 +232,10 @@
                             <div class="wheel-members-config-list" id="wheelMembersConfigList"></div>
                         </div>
                         <div class="wheel-members-manage-actions">
-                            <button type="button" id="wheelMembersShowPendingBtn" class="wheel-members-action-btn" title="Show every question that an enabled member still hasn't answered">Show unanswered</button>
-                            <button type="button" id="wheelMembersHideAnsweredBtn" class="wheel-members-action-btn" title="Hide every question that all enabled members have already answered">Hide answered</button>
+                            <div class="wheel-members-action-row">
+                                <button type="button" id="wheelMembersShowPendingBtn" class="wheel-members-action-btn" title="Choose which unanswered questions to show">Show unanswered</button>
+                                <button type="button" id="wheelMembersHideAnsweredBtn" class="wheel-members-action-btn" title="Choose which answered questions to hide">Hide answered</button>
+                            </div>
                         </div>
                     </div>
                     <button class="sound-toggle-btn wheel-sound-btn" id="wheelSoundButton" data-panel="wheelSoundPanel" onclick="toggleSound(event)" title="Sounds"></button>
@@ -303,22 +305,23 @@
         </div>
     </div>
 
-    <!-- Member roll wheel (spins over the question modal) -->
-    <div id="memberRollOverlay" hidden>
-        <div id="memberRollBox">
-            <div class="member-roll-title">Who answers?</div>
-            <div class="member-roll-stage">
-                <div class="member-roll-pointer"></div>
-                <div class="member-roll-spinner" id="memberRollSpinner">
-                    <svg id="memberRollSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"></svg>
-                </div>
-                <div class="member-roll-hub">🎲</div>
+    <!-- Member answered-questions breakdown -->
+    <div id="wheelMemberDetailModal" hidden>
+        <div id="wheelMemberDetailContent">
+            <div class="wheel-member-detail-header">
+                <span id="wheelMemberDetailTitle">Member</span>
+                <button type="button" id="wheelMemberDetailClose" class="wheel-member-detail-close" title="Close">&times;</button>
             </div>
-            <div class="member-roll-result" id="memberRollResult" hidden></div>
-            <div class="member-roll-buttons">
-                <button id="memberRollAgain" class="uk-button uk-button-default" type="button" hidden>Roll again</button>
-                <button id="memberRollClose" class="uk-button uk-button-primary" type="button">Done</button>
-            </div>
+            <div id="wheelMemberDetailBody" class="wheel-member-detail-body"></div>
+        </div>
+    </div>
+
+    <!-- Show/Hide question filter choice -->
+    <div id="wheelChoiceModal" hidden>
+        <div id="wheelChoiceContent">
+            <div class="wheel-choice-title" id="wheelChoiceTitle">Choose</div>
+            <div class="wheel-choice-options" id="wheelChoiceOptions"></div>
+            <button type="button" id="wheelChoiceCancel" class="wheel-choice-cancel">Cancel</button>
         </div>
     </div>
 
