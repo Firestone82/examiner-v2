@@ -1033,6 +1033,7 @@ class QuestionsWheel {
     // long as a wheel spin (prefs.spinTimeMs).
     animateMemberRoll(pool) {
         let n = pool.length;
+        let prevId = this.rolledMemberId;
         this.rolling = true;
         this.rolledMemberId = null;
         let resultEl = document.getElementById('wheelMembersRollResult');
@@ -1046,8 +1047,16 @@ class QuestionsWheel {
             : null;
 
         let pickedIdx = Math.floor(Math.random() * n);
+        // With more than one candidate, never land on the same member twice in
+        // a row — re-pick uniformly among the others.
+        let prevIdx = pool.findIndex(m => m.id === prevId);
+        if (n > 1 && prevIdx >= 0 && pickedIdx === prevIdx) {
+            pickedIdx = (prevIdx + 1 + Math.floor(Math.random() * (n - 1))) % n;
+        }
         let picked = pool[pickedIdx];
-        // At least three full passes, landing exactly on the winner.
+        // At least three full passes, ending on the winner. The winner is held
+        // through the slow tail of the deceleration (rather than being ticked
+        // onto at the very end) so the highlight comes to rest on it.
         let totalSteps = n * 3 + pickedIdx;
         let duration = Math.max(300, this.prefs.spinTimeMs);
         let startTime = performance.now();
@@ -1056,7 +1065,7 @@ class QuestionsWheel {
         let animate = (now) => {
             if (!this.rolling) { this.clearRollHighlight(); return; }
             let t = Math.min(1, (now - startTime) / duration);
-            let step = Math.floor(easeOutQuint(t) * totalSteps);
+            let step = Math.min(totalSteps, Math.floor(easeOutQuint(t) * (totalSteps + 1)));
             if (step !== lastStep) {
                 lastStep = step;
                 this.clearRollHighlight();
@@ -1069,7 +1078,6 @@ class QuestionsWheel {
             } else {
                 this._rollRaf = null;
                 this.rolling = false;
-                this.clearRollHighlight();
                 playSound('wheel-land');
                 this.landRolledMember(picked);
             }
