@@ -1207,7 +1207,11 @@ class QuestionsWheel {
         return this.activeMembers().length > 0 && this.unansweredMembers(qid).length === 0;
     }
 
-    toggleAnswered(memberId) {
+    // Toggles whether a member has answered the open question. When a row
+    // element is passed, the row is updated in place rather than rebuilding the
+    // whole list — that keeps the node alive between the two clicks of a
+    // double-click (which toggles the enabled state).
+    toggleAnswered(memberId, rowEl) {
         if (!this.selected || this.rolling) return;
         let member = this.members.find(m => m.id === memberId);
         // Disabled members can still have their answered state tracked — they
@@ -1221,12 +1225,26 @@ class QuestionsWheel {
         else list.push(memberId);
         if (list.length) this.answered[qid] = list;
         else delete this.answered[qid];
-        if (this.rolledMemberId === memberId && !wasAnswered) this.rolledMemberId = null;
+        let nowAnswered = !wasAnswered;
+        if (this.rolledMemberId === memberId && nowAnswered) this.rolledMemberId = null;
 
         if (this.maybeCompleteSelected()) return;
-        playSound(wasAnswered ? 'deselect' : 'select');
+        playSound(nowAnswered ? 'select' : 'deselect');
         this.persistState();
-        this.renderMembersPanel();
+
+        if (rowEl) {
+            rowEl.classList.toggle('answered', nowAnswered);
+            let check = rowEl.querySelector('.wheel-member-check');
+            if (check) {
+                check.textContent = nowAnswered ? '✓' : '';
+                check.title = nowAnswered ? 'Answered — click to unmark' : 'Mark answered';
+            }
+            // The 🎲 tag clears once the rolled member is marked answered.
+            let tag = rowEl.querySelector('.wheel-member-rolled-tag');
+            if (tag && (nowAnswered || this.rolledMemberId !== memberId)) tag.remove();
+        } else {
+            this.renderMembersPanel();
+        }
         this.renderSidebar();
     }
 
@@ -1408,21 +1426,21 @@ class QuestionsWheel {
                 + (answered ? ' answered' : '')
                 + (m.id === this.rolledMemberId ? ' rolled' : '');
             row.dataset.memberId = m.id;
-            row.title = 'Click the box to mark answered • double-click to '
+            row.title = 'Click to mark answered • double-click to '
                 + (disabled ? 'enable' : 'disable');
 
-            // Double-clicking the row (anywhere but the checkbox and stars,
-            // which stop propagation) toggles the member's enabled state. A
-            // single click on the row body does nothing.
+            // Single click (anywhere but the rating stars) toggles answered;
+            // double-click toggles the member's enabled state. The answered
+            // toggle updates the row in place so it doesn't rebuild the list
+            // mid-gesture, which would stop the double-click from registering.
+            row.onclick = () => this.toggleAnswered(m.id, row);
             row.ondblclick = () => this.setMemberDisabled(m.id, !m.disabled);
 
             let check = document.createElement('span');
             check.className = 'wheel-member-check';
             check.textContent = answered ? '✓' : '';
             check.title = answered ? 'Answered — click to unmark' : 'Mark answered';
-            // A single click on the box toggles answered instantly; its
-            // dblclick is swallowed so it never toggles the enabled state.
-            check.onclick = (e) => { e.stopPropagation(); this.toggleAnswered(m.id); };
+            // A double-click on the box shouldn't toggle the enabled state.
             check.ondblclick = (e) => e.stopPropagation();
 
             let name = document.createElement('span');
