@@ -34,6 +34,29 @@ function clearWheelState(name) {
     }
 }
 
+// Per-DLC member roster (who is answering). Kept separate from the wheel
+// state so the roster survives a wheel reset — the people in the room don't
+// change just because the questions were reshuffled.
+const WHEEL_MEMBERS_KEY = 'examiner_wheel_members';
+
+function loadWheelMembers(name) {
+    if (!name) return [];
+    try {
+        let list = (JSON.parse(localStorage.getItem(WHEEL_MEMBERS_KEY)) || {})[name];
+        return Array.isArray(list)
+            ? list.filter(m => m && typeof m.id === 'string' && typeof m.name === 'string')
+            : [];
+    } catch { return []; }
+}
+
+function saveWheelMembers(name, members) {
+    if (!name) return;
+    let all = {};
+    try { all = JSON.parse(localStorage.getItem(WHEEL_MEMBERS_KEY)) || {}; } catch {}
+    all[name] = members;
+    try { localStorage.setItem(WHEEL_MEMBERS_KEY, JSON.stringify(all)); } catch {}
+}
+
 // True only when the saved state reflects real progress — i.e. the user hid a
 // question or shuffled the order. Group collapse state is just a view
 // preference (and may be set automatically for large DLCs), so it does not
@@ -42,6 +65,10 @@ function clearWheelState(name) {
 function isMeaningfulWheelState(saved, questions) {
     if (!saved) return false;
     if (Array.isArray(saved.hidden) && saved.hidden.length > 0) return true;
+    if (saved.answered && typeof saved.answered === 'object'
+        && Object.keys(saved.answered).some(qid => Array.isArray(saved.answered[qid]) && saved.answered[qid].length > 0)) {
+        return true;
+    }
     if (Array.isArray(saved.order) && Array.isArray(questions)) {
         let orig = questions.map(q => q.id);
         if (saved.order.length !== orig.length) return true;
@@ -73,6 +100,7 @@ const WHEEL_DEFAULT_PREFS = {
     dynamicRotation: false,
     centered: true,
     timerEnabled: false,
+    membersEnabled: false,
 };
 
 let wheelInstance = null;
@@ -91,6 +119,7 @@ function loadWheelPrefs() {
                 dynamicRotation: p.dynamicRotation === true,
                 centered:        p.centered !== false,
                 timerEnabled:    p.timerEnabled === true,
+                membersEnabled:  p.membersEnabled === true,
             };
         }
     } catch {}
@@ -160,6 +189,13 @@ class QuestionsWheel {
         this.timerInterval = null;
         this.timerStart = 0;
 
+        // Member roster (persists per DLC) and per-question answered tracking
+        // (part of the resettable wheel state). rolledMemberId is transient —
+        // it just highlights the last "Roll" result in the open modal.
+        this.members = loadWheelMembers(this.stateName);
+        this.answered = {};
+        this.rolledMemberId = null;
+
         let hadSavedState = !!loadWheelState(this.stateName);
         this.restoreState();
         // On a fresh open of a large grouped DLC, collapse the named group
@@ -195,6 +231,19 @@ class QuestionsWheel {
         if (!saved) return;
         if (Array.isArray(saved.hidden)) this.hidden = new Set(saved.hidden);
         if (Array.isArray(saved.collapsed)) this.collapsedGroups = new Set(saved.collapsed);
+        if (saved.answered && typeof saved.answered === 'object') {
+            // Keep only known members so a removed member can't linger.
+            let valid = new Set(this.members.map(m => m.id));
+            let restored = {};
+            Object.keys(saved.answered).forEach(qid => {
+                let ids = saved.answered[qid];
+                if (Array.isArray(ids)) {
+                    let kept = ids.filter(id => valid.has(id));
+                    if (kept.length) restored[qid] = kept;
+                }
+            });
+            this.answered = restored;
+        }
         if (Array.isArray(saved.order)) {
             let byId = {};
             this.questions.forEach(q => { byId[q.id] = q; });
@@ -215,6 +264,7 @@ class QuestionsWheel {
             hidden: Array.from(this.hidden),
             order: this.wheelOrder.map(q => q.id),
             collapsed: Array.from(this.collapsedGroups),
+            answered: this.answered,
         });
     }
 
@@ -447,6 +497,53 @@ class QuestionsWheel {
             };
         }
 
+        let membersSwitch = document.getElementById('wheelMembersSwitch');
+        let membersRow = document.getElementById('wheelMembersRow');
+        let updateMembersSwitch = () => membersSwitch && membersSwitch.classList.toggle('on', this.prefs.membersEnabled);
+        updateMembersSwitch();
+        this.applyMembersConfigVisibility();
+        if (membersRow) {
+            membersRow.onclick = (e) => {
+                e.preventDefault();
+                this.prefs.membersEnabled = !this.prefs.membersEnabled;
+                updateMembersSwitch();
+                saveWheelPrefs(this.prefs);
+                this.applyMembersConfigVisibility();
+                this.renderSidebar();
+                // Reflect the change in an open modal right away.
+                if (!document.getElementById('wheelModal').hidden) {
+                    this.applyMembersButton();
+                    if (!this.prefs.membersEnabled) this.closeMembersPanel();
+                }
+            };
+        }
+
+        let memberInput = document.getElementById('wheelMemberInput');
+        let memberAddBtn = document.getElementById('wheelMemberAddBtn');
+        let commitMember = () => {
+            if (!memberInput) return;
+            if (this.addMember(memberInput.value)) {
+                memberInput.value = '';
+            }
+            memberInput.focus();
+        };
+        if (memberAddBtn) memberAddBtn.onclick = commitMember;
+        if (memberInput) {
+            memberInput.addEventListener('keydown', e => {
+                if (e.key === 'Enter') { e.preventDefault(); commitMember(); }
+            });
+            // Typing inside the panel shouldn't bubble to the spacebar-spin
+            // handler or the outside-click closer.
+            memberInput.addEventListener('keydown', e => e.stopPropagation());
+        }
+        this.renderMembersConfig();
+
+        let rollBtn = document.getElementById('wheelMembersRollBtn');
+        if (rollBtn) rollBtn.onclick = () => this.rollMember();
+
+        let membersBtn = document.getElementById('wheelModalMembersBtn');
+        if (membersBtn) membersBtn.onclick = () => this.toggleMembersPanel();
+
         let exportBtn = document.getElementById('wheelExportRatingsBtn');
         if (exportBtn) {
             exportBtn.onclick = () => this.exportRatings();
@@ -579,6 +676,219 @@ class QuestionsWheel {
         a.click();
         document.body.removeChild(a);
         setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    // ── Members ───────────────────────────────────────────────────────────────
+
+    applyMembersConfigVisibility() {
+        let cfg = document.getElementById('wheelMembersConfig');
+        if (cfg) cfg.hidden = !this.prefs.membersEnabled;
+    }
+
+    addMember(name) {
+        name = (name || '').trim();
+        if (!name) return false;
+        // Case-insensitive duplicate guard so the roster stays unambiguous.
+        if (this.members.some(m => m.name.toLowerCase() === name.toLowerCase())) {
+            return false;
+        }
+        let id = 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        this.members.push({ id, name });
+        saveWheelMembers(this.stateName, this.members);
+        this.renderMembersConfig();
+        this.renderMembersPanel();
+        this.renderSidebar();
+        playSound('select');
+        return true;
+    }
+
+    removeMember(id) {
+        let idx = this.members.findIndex(m => m.id === id);
+        if (idx < 0) return;
+        this.members.splice(idx, 1);
+        saveWheelMembers(this.stateName, this.members);
+        // Drop the removed member from every question's answered list.
+        Object.keys(this.answered).forEach(qid => {
+            this.answered[qid] = this.answered[qid].filter(mid => mid !== id);
+            if (this.answered[qid].length === 0) delete this.answered[qid];
+        });
+        if (this.rolledMemberId === id) this.rolledMemberId = null;
+        this.persistState();
+        this.renderMembersConfig();
+        this.renderMembersPanel();
+        this.renderSidebar();
+        playSound('deselect');
+    }
+
+    renderMembersConfig() {
+        let list = document.getElementById('wheelMembersConfigList');
+        if (!list) return;
+        list.innerHTML = '';
+        if (this.members.length === 0) {
+            let empty = document.createElement('div');
+            empty.className = 'wheel-members-config-empty';
+            empty.textContent = 'No members yet.';
+            list.appendChild(empty);
+            return;
+        }
+        this.members.forEach(m => {
+            let row = document.createElement('div');
+            row.className = 'wheel-member-config-row';
+            let name = document.createElement('span');
+            name.className = 'wheel-member-config-name';
+            name.textContent = m.name;
+            let del = document.createElement('button');
+            del.type = 'button';
+            del.className = 'wheel-member-config-remove';
+            del.title = 'Remove member';
+            del.textContent = '✕';
+            del.onclick = () => this.removeMember(m.id);
+            row.appendChild(name);
+            row.appendChild(del);
+            list.appendChild(row);
+        });
+    }
+
+    answeredIds(qid) {
+        return this.answered[qid] || [];
+    }
+
+    isAnswered(qid, memberId) {
+        return this.answeredIds(qid).indexOf(memberId) >= 0;
+    }
+
+    unansweredMembers(qid) {
+        let done = new Set(this.answeredIds(qid));
+        return this.members.filter(m => !done.has(m.id));
+    }
+
+    // A question is complete only when there's at least one member and none of
+    // them are still pending.
+    allAnswered(qid) {
+        return this.members.length > 0 && this.unansweredMembers(qid).length === 0;
+    }
+
+    toggleAnswered(memberId) {
+        if (!this.selected) return;
+        let qid = this.selected.id;
+        let list = this.answered[qid] ? this.answered[qid].slice() : [];
+        let pos = list.indexOf(memberId);
+        let wasAnswered = pos >= 0;
+        if (wasAnswered) list.splice(pos, 1);
+        else list.push(memberId);
+        if (list.length) this.answered[qid] = list;
+        else delete this.answered[qid];
+        if (this.rolledMemberId === memberId && !wasAnswered) this.rolledMemberId = null;
+
+        // Everyone answered → the question is done. Mirror the manual "Hide
+        // question" flow (navigate sound, then hideSelected handles the
+        // all-complete case and modal close).
+        if (this.allAnswered(qid)) {
+            this.persistState();
+            this.renderSidebar();
+            playSound('navigate');
+            this.hideSelected();
+            return;
+        }
+        playSound(wasAnswered ? 'deselect' : 'select');
+        this.persistState();
+        this.renderMembersPanel();
+        this.renderSidebar();
+    }
+
+    rollMember() {
+        if (!this.selected) return;
+        let resultEl = document.getElementById('wheelMembersRollResult');
+        let pool = this.unansweredMembers(this.selected.id);
+        if (pool.length === 0) {
+            this.rolledMemberId = null;
+            if (resultEl) {
+                resultEl.hidden = false;
+                resultEl.textContent = this.members.length === 0
+                    ? 'No members to roll.'
+                    : 'Everyone has answered.';
+            }
+            this.renderMembersPanel();
+            playSound('deselect');
+            return;
+        }
+        let picked = pool[Math.floor(Math.random() * pool.length)];
+        this.rolledMemberId = picked.id;
+        if (resultEl) {
+            resultEl.hidden = false;
+            resultEl.textContent = '🎲 ' + picked.name;
+        }
+        playSound('show');
+        this.renderMembersPanel();
+    }
+
+    applyMembersButton() {
+        let btn = document.getElementById('wheelModalMembersBtn');
+        if (btn) btn.hidden = !this.prefs.membersEnabled;
+    }
+
+    toggleMembersPanel() {
+        let panel = document.getElementById('wheelMembersPanel');
+        if (!panel) return;
+        if (panel.hidden) {
+            this.renderMembersPanel();
+            panel.hidden = false;
+            playSound('navigate');
+        } else {
+            this.closeMembersPanel();
+        }
+    }
+
+    closeMembersPanel() {
+        let panel = document.getElementById('wheelMembersPanel');
+        if (panel) panel.hidden = true;
+    }
+
+    renderMembersPanel() {
+        let list = document.getElementById('wheelMembersPanelList');
+        let empty = document.getElementById('wheelMembersPanelEmpty');
+        let rollBtn = document.getElementById('wheelMembersRollBtn');
+        if (!list) return;
+        list.innerHTML = '';
+        let qid = this.selected ? this.selected.id : null;
+
+        if (this.members.length === 0) {
+            if (empty) empty.hidden = false;
+            if (rollBtn) rollBtn.disabled = true;
+            return;
+        }
+        if (empty) empty.hidden = true;
+
+        let pending = qid != null ? this.unansweredMembers(qid).length : this.members.length;
+        if (rollBtn) rollBtn.disabled = pending === 0;
+
+        this.members.forEach(m => {
+            let answered = qid != null && this.isAnswered(qid, m.id);
+            let row = document.createElement('div');
+            row.className = 'wheel-member-row'
+                + (answered ? ' answered' : '')
+                + (m.id === this.rolledMemberId ? ' rolled' : '');
+            row.onclick = () => this.toggleAnswered(m.id);
+
+            let check = document.createElement('span');
+            check.className = 'wheel-member-check';
+            check.textContent = answered ? '✓' : '';
+
+            let name = document.createElement('span');
+            name.className = 'wheel-member-name';
+            name.textContent = m.name;
+
+            row.appendChild(check);
+            row.appendChild(name);
+
+            if (m.id === this.rolledMemberId && !answered) {
+                let tag = document.createElement('span');
+                tag.className = 'wheel-member-rolled-tag';
+                tag.textContent = '🎲';
+                row.appendChild(tag);
+            }
+            list.appendChild(row);
+        });
     }
 
     shuffleWheel() {
@@ -1055,6 +1365,16 @@ class QuestionsWheel {
             }
         }
 
+        if (this.prefs.membersEnabled && this.members.length > 0) {
+            let answeredCount = this.answeredIds(question.id).length;
+            let badge = document.createElement('span');
+            badge.className = 'wheel-member-progress'
+                + (answeredCount >= this.members.length ? ' complete' : '');
+            badge.textContent = answeredCount + '/' + this.members.length;
+            badge.title = answeredCount + ' of ' + this.members.length + ' members answered';
+            item.appendChild(badge);
+        }
+
         item.appendChild(openBtn);
         item.appendChild(toggle);
 
@@ -1163,6 +1483,7 @@ class QuestionsWheel {
     showQuestionModal(question) {
         this.selected = question;
         this.hintRevealed = false;
+        this.rolledMemberId = null;
 
         let modal = document.getElementById('wheelModal');
         let body = document.getElementById('wheelModalBody');
@@ -1225,6 +1546,13 @@ class QuestionsWheel {
 
         this.applyHintsButton();
         this.refreshModalScore();
+
+        let rollResult = document.getElementById('wheelMembersRollResult');
+        if (rollResult) { rollResult.hidden = true; rollResult.textContent = ''; }
+        this.applyMembersButton();
+        if (!this.prefs.membersEnabled) this.closeMembersPanel();
+        this.renderMembersPanel();
+
         modal.hidden = false;
         this.startTimer();
     }
@@ -1285,8 +1613,10 @@ class QuestionsWheel {
 
     closeModal() {
         document.getElementById('wheelModal').hidden = true;
+        this.closeMembersPanel();
         this.selected = null;
         this.hintRevealed = false;
+        this.rolledMemberId = null;
         this.stopTimer();
     }
 

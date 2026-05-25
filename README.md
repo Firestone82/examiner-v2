@@ -174,7 +174,8 @@ the future.
 Top section title:
 
 - Gear icon — configuration panel (wheel size, text size, spin time, show
-  hints toggle, self-rating toggle). All settings persist across sessions.
+  hints toggle, self-rating toggle, members toggle). All settings persist
+  across sessions.
 - Speaker icon — sound configuration (only sounds used in the wheel are
   shown).
 
@@ -202,6 +203,25 @@ Inside the modal:
   as a small `★` badge next to the question in the sidebar.
 - "Close question" — closes the modal, keeps the question on the wheel.
 - "Hide question" — removes that section from the wheel.
+
+### Members (optional, off by default)
+
+Enable the **Members** toggle in the configuration panel to track a group of
+people answering each question. The member roster is saved per DLC, so it is
+restored whenever the same DLC is reopened.
+
+- Manage the roster (add / remove members) directly in the configuration
+  panel once the feature is enabled.
+- When viewing a question, a members button (top-right of the question box)
+  expands the members list on the right side of the modal. There you can:
+  - mark each member as having answered the current question (click to
+    toggle), and
+  - **Roll** a random member who has not answered the question yet.
+- Each member's answered status is saved per question (and per DLC) so it
+  survives reloads, just like hidden questions.
+- When every member has answered a question, that question is automatically
+  hidden from the wheel. The sidebar shows an `answered/total` badge per
+  question.
 
 See [example-wheel.dlc](example/example-wheel.dlc) for a complete example.
 

@@ -1692,9 +1692,285 @@ p.answer.dismissed {
     background: #444;
 }
 
+/* ── Members feature ──────────────────────────────────────────────────────── */
+
+/* The modal overlay lays the question box and the members panel side by side. */
+#wheelModal {
+    gap: 0.8rem;
+}
+
+#wheelModalMembersBtn {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 5;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #242424;
+    border: 1px solid #333;
+    border-radius: 6px;
+    color: #bbb;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+#wheelModalMembersBtn:hover {
+    background: #2e2e2e;
+    color: #1e87f0;
+    border-color: #444;
+}
+
+#wheelModalMembersBtn[hidden] { display: none; }
+
+#wheelMembersPanel {
+    width: 250px;
+    flex-shrink: 0;
+    max-height: 90vh;
+    overflow-y: auto;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+}
+
+#wheelMembersPanel[hidden] { display: none; }
+
+.wheel-members-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.8rem 1rem;
+    border-bottom: 1px solid #2a2a2a;
+    color: #8d8d8d;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+}
+
+.wheel-members-roll-btn {
+    background: #1e87f0;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-family: inherit;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.3rem 0.8rem;
+    cursor: pointer;
+    transition: background 0.12s, opacity 0.12s;
+}
+
+.wheel-members-roll-btn:hover { background: #3a97f5; }
+
+.wheel-members-roll-btn:disabled {
+    background: #333;
+    color: #777;
+    cursor: not-allowed;
+}
+
+.wheel-members-roll-result {
+    margin: 0.7rem 1rem 0;
+    padding: 0.5rem 0.7rem;
+    background: #11243a;
+    border: 1px solid #1e4a73;
+    border-radius: 4px;
+    color: #7fbcff;
+    font-size: 0.95rem;
+    font-weight: bold;
+    text-align: center;
+}
+
+.wheel-members-roll-result[hidden] { display: none; }
+
+.wheel-members-panel-list {
+    padding: 0.7rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.wheel-member-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.6rem;
+    background: #242424;
+    border: 1px solid #2e2e2e;
+    border-radius: 4px;
+    color: #ddd;
+    font-size: 0.88rem;
+    cursor: pointer;
+    transition: background 0.1s, border-color 0.1s, opacity 0.1s;
+}
+
+.wheel-member-row:hover { background: #2e2e2e; }
+
+.wheel-member-row.answered {
+    opacity: 0.55;
+}
+
+.wheel-member-row.answered .wheel-member-name {
+    text-decoration: line-through;
+    color: #888;
+}
+
+.wheel-member-row.rolled {
+    border-color: #1e87f0;
+    box-shadow: 0 0 0 1px #1e87f0 inset;
+}
+
+.wheel-member-check {
+    flex-shrink: 0;
+    width: 1.1rem;
+    height: 1.1rem;
+    line-height: 1.1rem;
+    text-align: center;
+    border: 1px solid #555;
+    border-radius: 3px;
+    color: #4caf50;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.wheel-member-row.answered .wheel-member-check {
+    background: #1d3d23;
+    border-color: #4caf50;
+}
+
+.wheel-member-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wheel-member-rolled-tag {
+    flex-shrink: 0;
+    font-size: 0.85rem;
+}
+
+.wheel-members-panel-empty {
+    padding: 1rem;
+    color: #777;
+    font-size: 0.8rem;
+    text-align: center;
+    line-height: 1.5;
+}
+
+.wheel-members-panel-empty[hidden] { display: none; }
+
+/* Members management inside the config panel */
+.wheel-members-config {
+    padding: 0.3rem 0.9rem 0.6rem;
+}
+
+.wheel-members-config[hidden] { display: none; }
+
+.wheel-members-add {
+    display: flex;
+    gap: 0.4rem;
+    margin-bottom: 0.5rem;
+}
+
+.wheel-member-input {
+    flex: 1;
+    min-width: 0;
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 4px;
+    color: #ddd;
+    font-family: inherit;
+    font-size: 0.8rem;
+    padding: 0.3rem 0.5rem;
+    outline: none;
+}
+
+.wheel-member-input:focus { border-color: #1e87f0; }
+
+.wheel-member-add-btn {
+    flex-shrink: 0;
+    background: #1e87f0;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.78rem;
+    font-family: inherit;
+    padding: 0.3rem 0.7rem;
+    cursor: pointer;
+    transition: background 0.12s;
+}
+
+.wheel-member-add-btn:hover { background: #3a97f5; }
+
+.wheel-members-config-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    max-height: 9rem;
+    overflow-y: auto;
+}
+
+.wheel-member-config-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.3rem 0.5rem;
+    background: #1f1f1f;
+    border-radius: 4px;
+    font-size: 0.82rem;
+    color: #ccc;
+}
+
+.wheel-member-config-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wheel-member-config-remove {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: #888;
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 0 0.2rem;
+    transition: color 0.12s;
+}
+
+.wheel-member-config-remove:hover { color: #f0506e; }
+
+.wheel-members-config-empty {
+    color: #777;
+    font-size: 0.78rem;
+    text-align: center;
+    padding: 0.3rem;
+}
+
+/* Answered progress badge on wheel sidebar items */
+.wheel-member-progress {
+    flex-shrink: 0;
+    color: #7fbcff;
+    font-size: 0.72rem;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.wheel-member-progress.complete {
+    color: #4caf50;
+}
+
 @media (max-width: 600px) {
     #wheelModal {
         padding: 0.4rem;
+        flex-direction: column;
+        gap: 0.4rem;
     }
     #wheelModalBody {
         padding: 1rem 1.2rem;
@@ -1703,6 +1979,10 @@ p.answer.dismissed {
     #wheelModalButtons {
         flex-direction: column;
         padding: 0.7rem 1rem 1rem;
+    }
+    #wheelMembersPanel {
+        width: 100%;
+        max-height: 40vh;
     }
 }
 
