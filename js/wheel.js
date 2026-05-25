@@ -1749,25 +1749,25 @@ class QuestionsWheel {
         item.className = 'wheel-question-item' + (isHidden ? ' off' : '');
         item.onclick = () => this.toggleQuestion(question.id);
 
-        let dot = document.createElement('span');
+        // The colored dot doubles as the "open" control: it shows the
+        // question's category color at rest and turns into an eye on hover.
+        // Clicking it opens the question as if it was picked.
+        let dot = document.createElement('button');
+        dot.type = 'button';
         dot.className = 'wheel-question-color';
-        dot.style.background = this.colorFor(question);
-
-        let titleEl = document.createElement('span');
-        titleEl.className = 'wheel-question-title';
-        titleEl.textContent = title;
-
-        let openBtn = document.createElement('button');
-        openBtn.type = 'button';
-        openBtn.className = 'wheel-question-open';
-        openBtn.title = 'Open question';
-        openBtn.innerHTML = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/></svg>";
-        openBtn.onclick = (e) => {
+        dot.style.setProperty('--q-color', this.colorFor(question));
+        dot.title = 'Open question';
+        dot.innerHTML = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/><circle cx='12' cy='12' r='3'/></svg>";
+        dot.onclick = (e) => {
             e.stopPropagation();
             if (this.spinning) return;
             playSound('select');
             this.showQuestionModal(question);
         };
+
+        let titleEl = document.createElement('span');
+        titleEl.className = 'wheel-question-title';
+        titleEl.textContent = title;
 
         let toggle = document.createElement('span');
         toggle.className = 'wheel-question-toggle';
@@ -1803,7 +1803,6 @@ class QuestionsWheel {
             }
         }
 
-        item.appendChild(openBtn);
         item.appendChild(toggle);
 
         // Hover tooltip shows the long question text (the title in the row
