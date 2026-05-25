@@ -640,18 +640,24 @@ class QuestionsWheel {
         let membersBtn = document.getElementById('wheelModalMembersBtn');
         if (membersBtn) membersBtn.onclick = () => this.toggleMembersPanel();
 
-        let exportDataBtn = document.getElementById('wheelExportDataBtn');
-        if (exportDataBtn) {
-            exportDataBtn.onclick = () => {
+        let exportBtn = document.getElementById('wheelExportBtn');
+        if (exportBtn) {
+            exportBtn.onclick = () => {
                 let panel = document.getElementById('wheelConfigPanel');
                 if (panel) panel.hidden = true;
-                exportDlcData(currentDlcName);
+                this.showChoice('Export', [
+                    {
+                        label: 'This DLC\'s progress',
+                        desc: 'Download all saved data for this DLC (ratings, wheel state, members) as a transferable file.',
+                        fn: () => exportDlcData(currentDlcName),
+                    },
+                    {
+                        label: 'Ratings table',
+                        desc: 'Download just your star ratings as a text table (per question and group).',
+                        fn: () => this.exportRatings(),
+                    },
+                ]);
             };
-        }
-
-        let exportBtn = document.getElementById('wheelExportRatingsBtn');
-        if (exportBtn) {
-            exportBtn.onclick = () => this.exportRatings();
         }
 
         let eraseBtn = document.getElementById('wheelEraseRatingsBtn');
