@@ -1045,12 +1045,17 @@ class QuestionsWheel {
             ? Array.from(list.children).find(r => r.dataset && r.dataset.memberId === id)
             : null;
 
-        let pickedIdx = Math.floor(Math.random() * n);
-        // With more than one candidate, never land on the same member twice in
-        // a row — re-pick uniformly among the others.
-        let prevIdx = pool.findIndex(m => m.id === prevId);
-        if (n > 1 && prevIdx >= 0 && pickedIdx === prevIdx) {
-            pickedIdx = (prevIdx + 1 + Math.floor(Math.random() * (n - 1))) % n;
+        // Weighted random pick: every candidate can win, so the result stays
+        // unpredictable, but the member picked last time gets a much smaller
+        // weight so the roll doesn't keep landing on the same name (and small
+        // rosters don't degenerate into a deterministic alternation).
+        let weights = pool.map(m => (m.id === prevId ? 0.2 : 1));
+        let totalWeight = weights.reduce((a, b) => a + b, 0);
+        let r = Math.random() * totalWeight;
+        let pickedIdx = n - 1;
+        for (let i = 0; i < n; i++) {
+            r -= weights[i];
+            if (r < 0) { pickedIdx = i; break; }
         }
         let picked = pool[pickedIdx];
         // At least three full passes, ending on the winner. The winner is held
