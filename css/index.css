@@ -1674,6 +1674,7 @@ p.answer.dismissed {
 
 #wheelModalButtons {
     display: flex;
+    flex-direction: column;
     gap: 0.6rem;
     padding: 1rem 2rem 1.4rem;
     border-top: 1px solid #2a2a2a;
