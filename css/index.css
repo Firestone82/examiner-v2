@@ -1698,9 +1698,14 @@ p.answer.dismissed {
 
 /* ── Members feature ──────────────────────────────────────────────────────── */
 
-/* The modal overlay lays the question box and the members panel side by side. */
-#wheelModal {
+/* The modal overlay centers the layout; the layout lays the question box and
+   the members panel side by side, with the panel's top aligned to the box. */
+#wheelModalLayout {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
     gap: 0.8rem;
+    max-width: 100%;
 }
 
 #wheelModalMembersBtn {
@@ -1985,8 +1990,12 @@ p.answer.dismissed {
 @media (max-width: 600px) {
     #wheelModal {
         padding: 0.4rem;
+    }
+    #wheelModalLayout {
         flex-direction: column;
+        align-items: stretch;
         gap: 0.4rem;
+        width: 100%;
     }
     #wheelModalBody {
         padding: 1rem 1.2rem;

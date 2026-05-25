@@ -222,8 +222,9 @@ restored whenever the same DLC is reopened.
 - Each member's answered status is saved per question (and per DLC) so it
   survives reloads, just like hidden questions.
 - When every member has answered a question, that question is automatically
-  hidden from the wheel. The sidebar shows an `answered/total` badge per
-  question.
+  hidden from the wheel. The question view stays open so you can review it
+  (or undo a mark); close it yourself when done. The sidebar shows an
+  `answered/total` badge per question.
 
 See [example-wheel.dlc](example/example-wheel.dlc) for a complete example.
 

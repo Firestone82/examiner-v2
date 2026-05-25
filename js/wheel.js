@@ -818,14 +818,17 @@ class QuestionsWheel {
         else delete this.answered[qid];
         if (this.rolledMemberId === memberId && !wasAnswered) this.rolledMemberId = null;
 
-        // Everyone answered → the question is done. Mirror the manual "Hide
-        // question" flow (navigate sound, then hideSelected handles the
-        // all-complete case and modal close).
+        // Everyone answered → mark the question hidden on the wheel, but keep
+        // the modal open so the user can review it (or undo a mark). They
+        // close the view themselves.
         if (this.allAnswered(qid)) {
-            this.persistState();
-            this.renderSidebar();
+            if (!this.hidden.has(qid)) {
+                this.hidden.add(qid);
+                this.resetSpinner();
+            }
             playSound('navigate');
-            this.hideSelected();
+            this.render();
+            this.renderMembersPanel();
             return;
         }
         playSound(wasAnswered ? 'deselect' : 'select');
