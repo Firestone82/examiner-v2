@@ -81,15 +81,19 @@ function isMeaningfulWheelState(saved, questions) {
     return false;
 }
 
-// Leaving the wheel discards its saved state (after confirmation) and returns
-// to the start screen. A plain browser refresh keeps the state instead.
+// Leaving the wheel: when there's nothing worth keeping, just go back to the
+// start screen; otherwise let the user choose to keep the wheel state (which is
+// already auto-saved) or discard it.
 function leaveWheel() {
-    showConfirmscreen('wheelView',
-        'Are you sure you want to leave?<br>The wheel will reset.',
-        function () {
-            clearWheelState(typeof currentDlcName === 'string' ? currentDlcName : null);
-            window.location.reload();
-        });
+    let name = (typeof currentDlcName === 'string') ? currentDlcName : null;
+    if (!wheelInstance || !wheelInstance.hasMeaningfulProgress()) {
+        clearWheelState(name);
+        window.location.reload();
+        return;
+    }
+    showSaveLeaveDialog('wheelView',
+        function () { window.location.reload(); },                  // keep the auto-saved state
+        function () { clearWheelState(name); window.location.reload(); });
 }
 
 const WHEEL_DEFAULT_PREFS = {
@@ -289,6 +293,24 @@ class QuestionsWheel {
             collapsed: Array.from(this.collapsedGroups),
             answered: this.answered,
         });
+    }
+
+    // Whether the wheel state holds anything the user would miss on reset:
+    // hidden questions, recorded answers, or a reordered wheel. (Star ratings
+    // live outside this state and are never lost on leave.)
+    hasMeaningfulProgress() {
+        if (this.hidden.size > 0) return true;
+        if (Object.keys(this.answered).some(qid =>
+            Array.isArray(this.answered[qid]) && this.answered[qid].length > 0)) {
+            return true;
+        }
+        let orig = this.questions.map(q => q.id);
+        let cur = this.wheelOrder.map(q => q.id);
+        if (cur.length !== orig.length) return true;
+        for (let i = 0; i < orig.length; i++) {
+            if (cur[i] !== orig[i]) return true;
+        }
+        return false;
     }
 
     attach() {
@@ -618,9 +640,24 @@ class QuestionsWheel {
         let membersBtn = document.getElementById('wheelModalMembersBtn');
         if (membersBtn) membersBtn.onclick = () => this.toggleMembersPanel();
 
-        let exportBtn = document.getElementById('wheelExportRatingsBtn');
+        let exportBtn = document.getElementById('wheelExportBtn');
         if (exportBtn) {
-            exportBtn.onclick = () => this.exportRatings();
+            exportBtn.onclick = () => {
+                let panel = document.getElementById('wheelConfigPanel');
+                if (panel) panel.hidden = true;
+                this.showChoice('Export', [
+                    {
+                        label: 'This DLC\'s progress',
+                        desc: 'Download all saved data for this DLC (ratings, wheel state, members) as a transferable file.',
+                        fn: () => exportDlcData(currentDlcName),
+                    },
+                    {
+                        label: 'Ratings table',
+                        desc: 'Download just your star ratings as a text table (per question and group).',
+                        fn: () => this.exportRatings(),
+                    },
+                ]);
+            };
         }
 
         let eraseBtn = document.getElementById('wheelEraseRatingsBtn');
@@ -1170,10 +1207,16 @@ class QuestionsWheel {
         return this.activeMembers().length > 0 && this.unansweredMembers(qid).length === 0;
     }
 
-    toggleAnswered(memberId) {
+    // Toggles whether a member has answered the open question. When a row
+    // element is passed, the row is updated in place rather than rebuilding the
+    // whole list — that keeps the node alive between the two clicks of a
+    // double-click (which toggles the enabled state).
+    toggleAnswered(memberId, rowEl) {
         if (!this.selected || this.rolling) return;
         let member = this.members.find(m => m.id === memberId);
-        if (!member || member.disabled) return;
+        // Disabled members can still have their answered state tracked — they
+        // just don't gate question completion (which only counts active ones).
+        if (!member) return;
         let qid = this.selected.id;
         let list = this.answered[qid] ? this.answered[qid].slice() : [];
         let pos = list.indexOf(memberId);
@@ -1182,12 +1225,26 @@ class QuestionsWheel {
         else list.push(memberId);
         if (list.length) this.answered[qid] = list;
         else delete this.answered[qid];
-        if (this.rolledMemberId === memberId && !wasAnswered) this.rolledMemberId = null;
+        let nowAnswered = !wasAnswered;
+        if (this.rolledMemberId === memberId && nowAnswered) this.rolledMemberId = null;
 
         if (this.maybeCompleteSelected()) return;
-        playSound(wasAnswered ? 'deselect' : 'select');
+        playSound(nowAnswered ? 'select' : 'deselect');
         this.persistState();
-        this.renderMembersPanel();
+
+        if (rowEl) {
+            rowEl.classList.toggle('answered', nowAnswered);
+            let check = rowEl.querySelector('.wheel-member-check');
+            if (check) {
+                check.textContent = nowAnswered ? '✓' : '';
+                check.title = nowAnswered ? 'Answered — click to unmark' : 'Mark answered';
+            }
+            // The 🎲 tag clears once the rolled member is marked answered.
+            let tag = rowEl.querySelector('.wheel-member-rolled-tag');
+            if (tag && (nowAnswered || this.rolledMemberId !== memberId)) tag.remove();
+        } else {
+            this.renderMembersPanel();
+        }
         this.renderSidebar();
     }
 
@@ -1284,10 +1341,12 @@ class QuestionsWheel {
             if (r < 0) { pickedIdx = i; break; }
         }
         let picked = pool[pickedIdx];
-        // At least three full passes, ending on the winner. The winner is held
-        // through the slow tail of the deceleration (rather than being ticked
-        // onto at the very end) so the highlight comes to rest on it.
-        let totalSteps = n * 3 + pickedIdx;
+        // Begin the sweep on a random member rather than always the first one,
+        // then run at least three full passes before easing to a stop on the
+        // winner. totalSteps is chosen so the final highlight lands on `picked`
+        // given the random starting offset.
+        let startOffset = Math.floor(Math.random() * n);
+        let totalSteps = n * 3 + ((pickedIdx - startOffset + n) % n);
         let duration = Math.max(300, this.prefs.spinTimeMs);
         let startTime = performance.now();
         let lastStep = -1;
@@ -1299,7 +1358,7 @@ class QuestionsWheel {
             if (step !== lastStep) {
                 lastStep = step;
                 this.clearRollHighlight();
-                let row = rowFor(pool[step % n].id);
+                let row = rowFor(pool[(step + startOffset) % n].id);
                 if (row) row.classList.add('rolling');
                 playSound('wheel-tick', 0.5);
             }
@@ -1359,18 +1418,30 @@ class QuestionsWheel {
 
         this.members.forEach(m => {
             let disabled = m.disabled;
-            let answered = !disabled && qid != null && this.isAnswered(qid, m.id);
+            // The ✓ reflects whether they answered, even while disabled.
+            let answered = qid != null && this.isAnswered(qid, m.id);
             let row = document.createElement('div');
             row.className = 'wheel-member-row'
                 + (disabled ? ' disabled' : '')
                 + (answered ? ' answered' : '')
                 + (m.id === this.rolledMemberId ? ' rolled' : '');
             row.dataset.memberId = m.id;
-            if (!disabled) row.onclick = () => this.toggleAnswered(m.id);
+            row.title = 'Click to mark answered • double-click to '
+                + (disabled ? 'enable' : 'disable');
+
+            // Single click (anywhere but the rating stars) toggles answered;
+            // double-click toggles the member's enabled state. The answered
+            // toggle updates the row in place so it doesn't rebuild the list
+            // mid-gesture, which would stop the double-click from registering.
+            row.onclick = () => this.toggleAnswered(m.id, row);
+            row.ondblclick = () => this.setMemberDisabled(m.id, !m.disabled);
 
             let check = document.createElement('span');
             check.className = 'wheel-member-check';
             check.textContent = answered ? '✓' : '';
+            check.title = answered ? 'Answered — click to unmark' : 'Mark answered';
+            // A double-click on the box shouldn't toggle the enabled state.
+            check.ondblclick = (e) => e.stopPropagation();
 
             let name = document.createElement('span');
             name.className = 'wheel-member-name';
@@ -2101,15 +2172,27 @@ class QuestionsWheel {
         let header = document.querySelector('#wheelModalBody .wheel-modal-answers-header');
         let list = document.querySelector('#wheelModalBody .wheel-modal-answers');
 
-        let canShow = hasHints && this.prefs.showHints;
-        btn.hidden = !canShow;
-        if (!canShow) {
-            // Hide hint elements entirely
+        // The button is hidden only when hints are turned off globally. With
+        // hints on but none for this question, it stays visible but disabled
+        // and reads "No hint".
+        if (!this.prefs.showHints) {
+            btn.hidden = true;
             if (header) header.style.display = 'none';
             if (list) list.style.display = 'none';
             return;
         }
 
+        btn.hidden = false;
+
+        if (!hasHints) {
+            btn.disabled = true;
+            btn.textContent = 'No hint';
+            if (header) header.style.display = 'none';
+            if (list) list.style.display = 'none';
+            return;
+        }
+
+        btn.disabled = false;
         if (this.hintRevealed) {
             btn.textContent = 'Hide hint';
             if (header) header.style.display = '';

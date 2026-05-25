@@ -158,6 +158,26 @@
     color: #f44336;
 }
 
+.recent-file-export {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #555;
+    padding: 0 0.2rem;
+    flex-shrink: 0;
+    transition: color 0.1s;
+}
+
+.recent-file-export:hover {
+    color: #1e87f0;
+}
+
+/* "Leave without saving" button in the save/leave dialog */
+#leaveDiscardButton {
+    margin: 1em;
+    vertical-align: middle;
+}
+
 #dataTransferBar {
     position: fixed;
     top: 1rem;
@@ -1869,7 +1889,6 @@ p.answer.dismissed {
 
 .wheel-member-row.disabled {
     opacity: 0.45;
-    cursor: default;
     background: #1c1c1c;
 }
 
@@ -1895,6 +1914,11 @@ p.answer.dismissed {
     color: #4caf50;
     font-size: 0.8rem;
     font-weight: bold;
+    cursor: pointer;
+}
+
+.wheel-member-check:hover {
+    border-color: #4caf50;
 }
 
 .wheel-member-row.answered .wheel-member-check {

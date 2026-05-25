@@ -35,6 +35,10 @@ function showConfirmscreen(origin,text,confirmFn) {
     document.getElementById("confirmScreen").hidden = false;
     document.getElementById(origin).hidden = true;
     document.getElementById("confirmTitle").innerHTML = text;
+    // The extra "leave without saving" button belongs only to the save/leave
+    // dialog — keep it hidden for plain yes/no confirmations.
+    let discardBtn = document.getElementById("leaveDiscardButton");
+    if (discardBtn) discardBtn.hidden = true;
     document.getElementById("confirmButton").onclick = function() {
         document.getElementById("confirmScreen").hidden = true;
         confirmFn();
@@ -44,6 +48,34 @@ function showConfirmscreen(origin,text,confirmFn) {
         document.getElementById(origin).hidden = false;
     }
 
+}
+
+// Three-way leave dialog: Save & leave (✓), Leave without saving, or Cancel
+// (✗, stays on the page). Used when there is in-progress state worth keeping.
+function showSaveLeaveDialog(origin, onSave, onDiscard) {
+    let screen = document.getElementById("confirmScreen");
+    screen.hidden = false;
+    document.getElementById(origin).hidden = true;
+    document.getElementById("confirmTitle").innerHTML = "Save your progress before leaving?";
+
+    let discardBtn = document.getElementById("leaveDiscardButton");
+    if (discardBtn) discardBtn.hidden = false;
+
+    document.getElementById("confirmButton").onclick = function () {
+        screen.hidden = true;
+        if (discardBtn) discardBtn.hidden = true;
+        onSave();
+    };
+    if (discardBtn) discardBtn.onclick = function () {
+        screen.hidden = true;
+        discardBtn.hidden = true;
+        onDiscard();
+    };
+    document.getElementById("cancelButton").onclick = function () {
+        screen.hidden = true;
+        if (discardBtn) discardBtn.hidden = true;
+        document.getElementById(origin).hidden = false;
+    };
 }
 
 /**
@@ -349,7 +381,7 @@ function setScoringEnabled(enabled) {
 function populateScoreWidget(parent, qid, onChange) {
     let label = document.createElement('span');
     label.className = 'score-label';
-    label.textContent = 'Question difficulty';
+    label.textContent = 'How well do you know the question?';
     parent.appendChild(label);
 
     let stars = document.createElement('div');
@@ -480,6 +512,9 @@ function buildMemberStarWidget(qid, memberId, onChange) {
         stars.appendChild(star);
     }
     stars.onclick = function (e) { e.stopPropagation(); };
+    // Double-clicking a member row toggles their enabled state; rating them
+    // shouldn't trigger that, so swallow dblclick on the stars too.
+    stars.ondblclick = function (e) { e.stopPropagation(); };
     stars.onmouseleave = function () { paintStars(stars, getMemberQuestionScore(qid, memberId)); };
     paintStars(stars, getMemberQuestionScore(qid, memberId));
     return stars;

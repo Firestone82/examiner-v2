@@ -14,7 +14,7 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/uikit/3.5.9/css/uikit.min.css" />
-    <link rel="stylesheet" href="css/index.css?v=26">
+    <link rel="stylesheet" href="css/index.css?v=28">
     <script type="module" src="https://cdn.jsdelivr.net/gh/zerodevx/zero-md@2/dist/zero-md.min.js"></script>
 </head>
 
@@ -49,12 +49,12 @@
 
         <div id="dataTransferBar">
             <button type="button" class="data-transfer-btn" id="exportDataBtn"
-                title="Download all your data (sessions, ratings, recent files, settings) as a backup file"
+                title="Download ALL your data (every DLC's sessions, ratings, recent files, settings) as one backup file"
                 onclick="exportAllData()">
-                <span uk-icon="icon: download; ratio: 0.85;"></span> Export data
+                <span uk-icon="icon: download; ratio: 0.85;"></span> Export all
             </button>
             <button type="button" class="data-transfer-btn" id="importDataBtn"
-                title="Restore data from a backup file"
+                title="Restore from a full backup or a single-DLC export file"
                 onclick="document.getElementById('import-data-input').click()">
                 <span uk-icon="icon: upload; ratio: 0.85;"></span> Import data
             </button>
@@ -67,7 +67,7 @@
             <div class="uk-width-3-4@l uk-width-4-5@xl">
                 <div class="section-title">
                     <button class="exit-button uk-button uk-button-danger" type="button"
-                        onclick="(function(){showConfirmscreen('examiner','Are you sure you want to leave?<br>Your progress will NOT be saved!',function(){clearSavedSession();window.location.reload();})})()"><a
+                        onclick="confirmLeaveExaminer()"><a
                             class="uk-link-reset" uk-icon="icon: sign-out; ratio: 1.1;"></a></button>
 
 
@@ -157,8 +157,11 @@
         </h1>
         <p class="confirmation">
             <button id="cancelButton" style="margin:1em; width: 18vw;" class="uk-button uk-button-danger uk-button"
-                type="button" onClick="window.location.reload();"><span
+                type="button" title="Cancel" onClick="window.location.reload();"><span
                     uk-icon='icon: close; ratio: 3.5'></span></button>
+
+            <button id="leaveDiscardButton" class="uk-button uk-button-default" type="button"
+                title="Leave without saving" hidden>Leave without saving</button>
 
             <button id="confirmButton" style="margin:1em; width: 18vw;" class="uk-button uk-button-primary uk-button "
                 type="button" onClick="window.location.reload();"><span
@@ -229,7 +232,7 @@
                         </label>
                         <div class="wheel-config-divider"></div>
                         <div class="wheel-config-actions">
-                            <button type="button" class="wheel-config-action" id="wheelExportRatingsBtn" title="Download your star ratings for this DLC as a text table (per question and group)">Export ratings</button>
+                            <button type="button" class="wheel-config-action" id="wheelExportBtn" title="Export this DLC's progress or just the ratings table">Export</button>
                             <button type="button" class="wheel-config-action wheel-config-action-danger" id="wheelEraseRatingsBtn" title="Delete all star ratings for this DLC">Erase all ratings</button>
                         </div>
                     </div>
@@ -347,11 +350,11 @@
         </div>
     </div>
 
-    <script src="js/utils.js?v=10"></script>
+    <script src="js/utils.js?v=14"></script>
     <script src="js/examiner.js?v=7"></script>
     <script src="js/interpret.js?v=8"></script>
-    <script src="js/wheel.js?v=28"></script>
-    <script src="js/index.js?v=11"></script>
+    <script src="js/wheel.js?v=35"></script>
+    <script src="js/index.js?v=12"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/uikit/3.5.9/js/uikit.min.js"
         integrity="sha512-OZ9Sq7ecGckkqgxa8t/415BRNoz2GIInOsu8Qjj99r9IlBCq2XJlm9T9z//D4W1lrl+xCdXzq0EYfMo8DZJ+KA=="
