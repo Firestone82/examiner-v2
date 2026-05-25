@@ -561,6 +561,11 @@ class QuestionsWheel {
         }
         this.renderMembersConfig();
 
+        let showPendingBtn = document.getElementById('wheelMembersShowPendingBtn');
+        if (showPendingBtn) showPendingBtn.onclick = () => this.showQuestionsWithPending();
+        let hideAnsweredBtn = document.getElementById('wheelMembersHideAnsweredBtn');
+        if (hideAnsweredBtn) hideAnsweredBtn.onclick = () => this.hideFullyAnsweredQuestions();
+
         let rollBtn = document.getElementById('wheelMembersRollBtn');
         if (rollBtn) rollBtn.onclick = () => this.rollMember();
 
@@ -857,6 +862,40 @@ class QuestionsWheel {
     // Members currently in the rotation (disabled ones are sat out).
     activeMembers() {
         return this.members.filter(m => !m.disabled);
+    }
+
+    // Bulk visibility helpers driven by member-answered state.
+    // Un-hide every question that still has at least one enabled member who
+    // hasn't answered it.
+    showQuestionsWithPending() {
+        if (this.spinning) return;
+        if (this.activeMembers().length === 0) return;
+        let changed = false;
+        this.questions.forEach(q => {
+            if (this.hidden.has(q.id) && !this.allAnswered(q.id)) {
+                this.hidden.delete(q.id);
+                changed = true;
+            }
+        });
+        if (changed) this.resetSpinner();
+        this.render();
+        playSound(changed ? 'select' : 'deselect');
+    }
+
+    // Hide every question that all enabled members have already answered.
+    hideFullyAnsweredQuestions() {
+        if (this.spinning) return;
+        if (this.activeMembers().length === 0) return;
+        let changed = false;
+        this.questions.forEach(q => {
+            if (!this.hidden.has(q.id) && this.allAnswered(q.id)) {
+                this.hidden.add(q.id);
+                changed = true;
+            }
+        });
+        if (changed) this.resetSpinner();
+        this.render();
+        playSound(changed ? 'deselect' : 'select');
     }
 
     unansweredMembers(qid) {

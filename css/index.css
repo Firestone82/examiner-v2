@@ -1920,6 +1920,32 @@ p.answer.dismissed {
 
 .wheel-members-config[hidden] { display: none; }
 
+.wheel-members-manage-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0 0.9rem 0.7rem;
+}
+
+.wheel-members-action-btn {
+    background: #242424;
+    color: #ccc;
+    border: 1px solid #333;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-family: inherit;
+    padding: 0.4rem 0.6rem;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.wheel-members-action-btn:hover {
+    background: #2e2e2e;
+    border-color: #1e87f0;
+    color: #fff;
+}
+
 .wheel-members-add {
     display: flex;
     gap: 0.4rem;

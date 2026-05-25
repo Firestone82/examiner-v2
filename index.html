@@ -14,7 +14,7 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/uikit/3.5.9/css/uikit.min.css" />
-    <link rel="stylesheet" href="css/index.css?v=18">
+    <link rel="stylesheet" href="css/index.css?v=19">
     <script type="module" src="https://cdn.jsdelivr.net/gh/zerodevx/zero-md@2/dist/zero-md.min.js"></script>
 </head>
 
@@ -231,6 +231,10 @@
                             </div>
                             <div class="wheel-members-config-list" id="wheelMembersConfigList"></div>
                         </div>
+                        <div class="wheel-members-manage-actions">
+                            <button type="button" id="wheelMembersShowPendingBtn" class="wheel-members-action-btn" title="Show every question that an enabled member still hasn't answered">Show unanswered</button>
+                            <button type="button" id="wheelMembersHideAnsweredBtn" class="wheel-members-action-btn" title="Hide every question that all enabled members have already answered">Hide answered</button>
+                        </div>
                     </div>
                     <button class="sound-toggle-btn wheel-sound-btn" id="wheelSoundButton" data-panel="wheelSoundPanel" onclick="toggleSound(event)" title="Sounds"></button>
                     <div id="wheelSoundPanel" class="sound-panel" hidden></div>
@@ -310,7 +314,7 @@
     <script src="js/utils.js?v=10"></script>
     <script src="js/examiner.js?v=7"></script>
     <script src="js/interpret.js?v=8"></script>
-    <script src="js/wheel.js?v=24"></script>
+    <script src="js/wheel.js?v=25"></script>
     <script src="js/index.js?v=10"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/uikit/3.5.9/js/uikit.min.js"
