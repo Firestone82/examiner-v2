@@ -315,14 +315,19 @@ class QuestionsWheel {
         };
 
         // Spacebar triggers spin when the modal is not open
+        let anyOverlayOpen = () => ['wheelMemberDetailModal', 'wheelChoiceModal']
+            .some(id => { let el = document.getElementById(id); return el && !el.hidden; });
+
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 let detail = document.getElementById('wheelMemberDetailModal');
                 if (detail && !detail.hidden) { this.closeMemberDetail(); return; }
+                let choice = document.getElementById('wheelChoiceModal');
+                if (choice && !choice.hidden) { this.closeChoice(); return; }
             }
             if (e.code !== 'Space') return;
             if (!document.getElementById('wheelModal').hidden) return;
-            if (document.getElementById('wheelMemberDetailModal') && !document.getElementById('wheelMemberDetailModal').hidden) return;
+            if (anyOverlayOpen()) return;
             e.preventDefault();
             this.spin();
         });
@@ -332,6 +337,13 @@ class QuestionsWheel {
         let memberDetailModal = document.getElementById('wheelMemberDetailModal');
         if (memberDetailModal) memberDetailModal.onclick = (e) => {
             if (e.target === memberDetailModal) this.closeMemberDetail();
+        };
+
+        let choiceCancel = document.getElementById('wheelChoiceCancel');
+        if (choiceCancel) choiceCancel.onclick = () => { playSound('next'); this.closeChoice(); };
+        let choiceModal = document.getElementById('wheelChoiceModal');
+        if (choiceModal) choiceModal.onclick = (e) => {
+            if (e.target === choiceModal) this.closeChoice();
         };
 
         // ── Config panel ─────────────────────────────────────────────────────
@@ -573,39 +585,32 @@ class QuestionsWheel {
         }
         this.renderMembersConfig();
 
-        let showPendingBtn = document.getElementById('wheelMembersShowPendingBtn');
-        if (showPendingBtn) showPendingBtn.onclick = () => {
-            let panel = document.getElementById('wheelMembersManagePanel');
-            if (panel) panel.hidden = true;
-            showConfirmscreen('wheelView',
-                'Show every question an enabled member still hasn\'t answered?<br>This changes which questions appear on the wheel.',
-                () => {
-                    document.getElementById('wheelView').hidden = false;
-                    this.showQuestionsWithPending();
-                });
-        };
-        let hideAnsweredBtn = document.getElementById('wheelMembersHideAnsweredBtn');
-        if (hideAnsweredBtn) hideAnsweredBtn.onclick = () => {
-            let panel = document.getElementById('wheelMembersManagePanel');
-            if (panel) panel.hidden = true;
-            showConfirmscreen('wheelView',
-                'Hide every question all enabled members have already answered?<br>This changes which questions appear on the wheel.',
-                () => {
-                    document.getElementById('wheelView').hidden = false;
-                    this.hideFullyAnsweredQuestions();
-                });
-        };
-        let unansweredBtn = document.getElementById('wheelMembersUnansweredBtn');
-        if (unansweredBtn) unansweredBtn.onclick = () => {
-            let panel = document.getElementById('wheelMembersManagePanel');
-            if (panel) panel.hidden = true;
-            showConfirmscreen('wheelView',
-                'Show only the questions nobody has answered yet?<br>This changes which questions appear on the wheel.',
-                () => {
-                    document.getElementById('wheelView').hidden = false;
-                    this.showOnlyUnansweredByAnyone();
-                });
-        };
+        let showBtn = document.getElementById('wheelMembersShowPendingBtn');
+        if (showBtn) showBtn.onclick = () => this.showChoice('Show questions', [
+            {
+                label: 'Some member hasn\'t answered',
+                desc: 'Show only questions at least one member still hasn\'t answered.',
+                fn: () => this.showOnlyNotFullyAnswered(),
+            },
+            {
+                label: 'Nobody has answered',
+                desc: 'Show only questions that no member has answered yet.',
+                fn: () => this.showOnlyUnansweredByAnyone(),
+            },
+        ]);
+        let hideBtn = document.getElementById('wheelMembersHideAnsweredBtn');
+        if (hideBtn) hideBtn.onclick = () => this.showChoice('Hide questions', [
+            {
+                label: 'Every member has answered',
+                desc: 'Hide questions that all enabled members have already answered.',
+                fn: () => this.hideFullyAnsweredQuestions(),
+            },
+            {
+                label: 'Some member has answered',
+                desc: 'Hide questions that at least one member has answered.',
+                fn: () => this.hideAnsweredBySomeone(),
+            },
+        ]);
 
         let rollBtn = document.getElementById('wheelMembersRollBtn');
         if (rollBtn) rollBtn.onclick = () => this.rollMember();
@@ -1045,23 +1050,58 @@ class QuestionsWheel {
         if (modal) modal.hidden = true;
     }
 
+    // Small choice dialog. options is [{ label, desc, fn }]; picking one closes
+    // the dialog and runs its fn. Used by the Show/Hide question filters.
+    showChoice(title, options) {
+        let modal = document.getElementById('wheelChoiceModal');
+        let titleEl = document.getElementById('wheelChoiceTitle');
+        let optsEl = document.getElementById('wheelChoiceOptions');
+        if (!modal || !optsEl) return;
+
+        if (titleEl) titleEl.textContent = title;
+        optsEl.innerHTML = '';
+        options.forEach(opt => {
+            let btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'wheel-choice-option';
+            let label = document.createElement('span');
+            label.className = 'wheel-choice-option-label';
+            label.textContent = opt.label;
+            btn.appendChild(label);
+            if (opt.desc) {
+                let d = document.createElement('span');
+                d.className = 'wheel-choice-option-desc';
+                d.textContent = opt.desc;
+                btn.appendChild(d);
+            }
+            btn.onclick = () => { this.closeChoice(); opt.fn(); };
+            optsEl.appendChild(btn);
+        });
+        modal.hidden = false;
+        playSound('navigate');
+    }
+
+    closeChoice() {
+        let modal = document.getElementById('wheelChoiceModal');
+        if (modal) modal.hidden = true;
+    }
+
     // Members currently in the rotation (disabled ones are sat out).
     activeMembers() {
         return this.members.filter(m => !m.disabled);
     }
 
     // Bulk visibility helpers driven by member-answered state.
-    // Un-hide every question that still has at least one enabled member who
-    // hasn't answered it.
-    showQuestionsWithPending() {
+    // Show only questions that aren't fully answered yet (at least one enabled
+    // member still hasn't answered them); hide the fully-answered rest.
+    showOnlyNotFullyAnswered() {
         if (this.spinning) return;
         if (this.activeMembers().length === 0) return;
         let changed = false;
         this.questions.forEach(q => {
-            if (this.hidden.has(q.id) && !this.allAnswered(q.id)) {
-                this.hidden.delete(q.id);
-                changed = true;
-            }
+            let full = this.allAnswered(q.id);
+            if (full && !this.hidden.has(q.id)) { this.hidden.add(q.id); changed = true; }
+            else if (!full && this.hidden.has(q.id)) { this.hidden.delete(q.id); changed = true; }
         });
         if (changed) this.resetSpinner();
         this.render();
@@ -1075,6 +1115,21 @@ class QuestionsWheel {
         let changed = false;
         this.questions.forEach(q => {
             if (!this.hidden.has(q.id) && this.allAnswered(q.id)) {
+                this.hidden.add(q.id);
+                changed = true;
+            }
+        });
+        if (changed) this.resetSpinner();
+        this.render();
+        playSound(changed ? 'deselect' : 'select');
+    }
+
+    // Hide every question that at least one member has answered.
+    hideAnsweredBySomeone() {
+        if (this.spinning) return;
+        let changed = false;
+        this.questions.forEach(q => {
+            if (!this.hidden.has(q.id) && this.answeredIds(q.id).length > 0) {
                 this.hidden.add(q.id);
                 changed = true;
             }

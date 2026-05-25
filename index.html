@@ -233,10 +233,9 @@
                         </div>
                         <div class="wheel-members-manage-actions">
                             <div class="wheel-members-action-row">
-                                <button type="button" id="wheelMembersShowPendingBtn" class="wheel-members-action-btn" title="Show every question that an enabled member still hasn't answered">Show unanswered</button>
-                                <button type="button" id="wheelMembersHideAnsweredBtn" class="wheel-members-action-btn" title="Hide every question that all enabled members have already answered">Hide answered</button>
+                                <button type="button" id="wheelMembersShowPendingBtn" class="wheel-members-action-btn" title="Choose which unanswered questions to show">Show unanswered</button>
+                                <button type="button" id="wheelMembersHideAnsweredBtn" class="wheel-members-action-btn" title="Choose which answered questions to hide">Hide answered</button>
                             </div>
-                            <button type="button" id="wheelMembersUnansweredBtn" class="wheel-members-action-btn" title="Show only questions that nobody has answered yet (hide the rest)">Only fully unanswered</button>
                         </div>
                     </div>
                     <button class="sound-toggle-btn wheel-sound-btn" id="wheelSoundButton" data-panel="wheelSoundPanel" onclick="toggleSound(event)" title="Sounds"></button>
@@ -314,6 +313,15 @@
                 <button type="button" id="wheelMemberDetailClose" class="wheel-member-detail-close" title="Close">&times;</button>
             </div>
             <div id="wheelMemberDetailBody" class="wheel-member-detail-body"></div>
+        </div>
+    </div>
+
+    <!-- Show/Hide question filter choice -->
+    <div id="wheelChoiceModal" hidden>
+        <div id="wheelChoiceContent">
+            <div class="wheel-choice-title" id="wheelChoiceTitle">Choose</div>
+            <div class="wheel-choice-options" id="wheelChoiceOptions"></div>
+            <button type="button" id="wheelChoiceCancel" class="wheel-choice-cancel">Cancel</button>
         </div>
     </div>
 

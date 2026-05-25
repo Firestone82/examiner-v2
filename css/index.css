@@ -2077,6 +2077,93 @@ p.answer.dismissed {
     min-width: 0;
 }
 
+/* ── Show/Hide question filter choice dialog ───────────────────────────────── */
+
+#wheelChoiceModal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 1200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+#wheelChoiceModal[hidden] { display: none; }
+
+#wheelChoiceContent {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    max-width: 420px;
+    width: 100%;
+    padding: 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+}
+
+.wheel-choice-title {
+    font-size: 1.05rem;
+    font-weight: bold;
+    color: #eee;
+}
+
+.wheel-choice-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.wheel-choice-option {
+    text-align: left;
+    background: #242424;
+    border: 1px solid #333;
+    border-radius: 6px;
+    color: #ddd;
+    font-family: inherit;
+    cursor: pointer;
+    padding: 0.6rem 0.7rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    transition: background 0.12s, border-color 0.12s;
+}
+
+.wheel-choice-option:hover {
+    background: #2e2e2e;
+    border-color: #1e87f0;
+}
+
+.wheel-choice-option-label {
+    font-weight: bold;
+    font-size: 0.9rem;
+    color: #fff;
+}
+
+.wheel-choice-option-desc {
+    font-size: 0.78rem;
+    color: #99a6b0;
+}
+
+.wheel-choice-cancel {
+    align-self: flex-end;
+    background: none;
+    border: 1px solid #444;
+    color: #aaa;
+    border-radius: 4px;
+    padding: 0.35rem 0.9rem;
+    cursor: pointer;
+    font-family: inherit;
+    transition: color 0.12s, border-color 0.12s;
+}
+
+.wheel-choice-cancel:hover {
+    color: #fff;
+    border-color: #888;
+}
+
 .wheel-members-action-btn {
     background: #242424;
     color: #ccc;
