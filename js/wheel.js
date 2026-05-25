@@ -316,11 +316,23 @@ class QuestionsWheel {
 
         // Spacebar triggers spin when the modal is not open
         document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                let detail = document.getElementById('wheelMemberDetailModal');
+                if (detail && !detail.hidden) { this.closeMemberDetail(); return; }
+            }
             if (e.code !== 'Space') return;
             if (!document.getElementById('wheelModal').hidden) return;
+            if (document.getElementById('wheelMemberDetailModal') && !document.getElementById('wheelMemberDetailModal').hidden) return;
             e.preventDefault();
             this.spin();
         });
+
+        let memberDetailClose = document.getElementById('wheelMemberDetailClose');
+        if (memberDetailClose) memberDetailClose.onclick = () => { playSound('next'); this.closeMemberDetail(); };
+        let memberDetailModal = document.getElementById('wheelMemberDetailModal');
+        if (memberDetailModal) memberDetailModal.onclick = (e) => {
+            if (e.target === memberDetailModal) this.closeMemberDetail();
+        };
 
         // ── Config panel ─────────────────────────────────────────────────────
         let sizeSlider = document.getElementById('wheelSizeSlider');
@@ -857,9 +869,10 @@ class QuestionsWheel {
             toggle.onclick = () => this.setMemberDisabled(m.id, !m.disabled);
 
             let count = document.createElement('span');
-            count.className = 'wheel-member-count';
+            count.className = 'wheel-member-count clickable';
             count.textContent = '(' + this.answeredCountForMember(m.id) + ')';
-            count.title = 'Questions answered';
+            count.title = 'Show answered questions by category';
+            count.onclick = () => this.showMemberAnswers(m.id);
 
             let del = document.createElement('button');
             del.type = 'button';
@@ -892,6 +905,111 @@ class QuestionsWheel {
             if (this.answered[qid].indexOf(memberId) >= 0) n++;
         }
         return n;
+    }
+
+    // Opens a breakdown of the questions a member has answered, bucketed by
+    // category (in the wheel's group order). Each row also shows the member's
+    // own difficulty rating for that question when scoring is on.
+    showMemberAnswers(memberId) {
+        let member = this.members.find(m => m.id === memberId);
+        let modal = document.getElementById('wheelMemberDetailModal');
+        let titleEl = document.getElementById('wheelMemberDetailTitle');
+        let body = document.getElementById('wheelMemberDetailBody');
+        if (!member || !modal || !body) return;
+
+        if (titleEl) titleEl.textContent = member.name;
+        body.innerHTML = '';
+
+        let titleOf = q => (q.question && q.question.title) || ('Question #' + q.id);
+        let groupNameOf = q => {
+            let g = this.findGroup(this.questionGroups[q.id]);
+            return g ? g.name : 'Ungrouped';
+        };
+
+        let answered = this.questions.filter(q => this.isAnswered(q.id, memberId));
+        if (answered.length === 0) {
+            let empty = document.createElement('div');
+            empty.className = 'wheel-member-detail-empty';
+            empty.textContent = member.name + ' hasn\'t answered any questions yet.';
+            body.appendChild(empty);
+            modal.hidden = false;
+            playSound('navigate');
+            return;
+        }
+
+        let groupOrder = {};
+        this.groups.forEach((g, i) => { groupOrder[g.name] = i; });
+        let orderIndex = name => (name in groupOrder ? groupOrder[name] : this.groups.length);
+
+        let buckets = {};
+        answered.forEach(q => {
+            let name = groupNameOf(q);
+            (buckets[name] = buckets[name] || []).push(q);
+        });
+        let groupNames = Object.keys(buckets).sort((a, b) => {
+            let oa = orderIndex(a), ob = orderIndex(b);
+            return oa !== ob ? oa - ob : a.localeCompare(b);
+        });
+
+        let summary = document.createElement('div');
+        summary.className = 'wheel-member-detail-summary';
+        summary.textContent = answered.length + ' question'
+            + (answered.length === 1 ? '' : 's') + ' answered';
+        body.appendChild(summary);
+
+        groupNames.forEach(name => {
+            let qs = buckets[name].slice().sort((a, b) => titleOf(a).localeCompare(titleOf(b)));
+            let grpObj = this.groups.find(g => g.name === name);
+
+            let section = document.createElement('div');
+            section.className = 'wheel-member-detail-group';
+
+            let head = document.createElement('div');
+            head.className = 'wheel-member-detail-group-head';
+            let dot = document.createElement('span');
+            dot.className = 'wheel-member-detail-dot';
+            dot.style.background = (grpObj && typeof grpObj.color === 'string')
+                ? grpObj.color : this.colorFor(qs[0]);
+            let gname = document.createElement('span');
+            gname.className = 'wheel-member-detail-group-name';
+            gname.textContent = name;
+            let gcount = document.createElement('span');
+            gcount.className = 'wheel-member-detail-group-count';
+            gcount.textContent = '(' + qs.length + ')';
+            head.appendChild(dot);
+            head.appendChild(gname);
+            head.appendChild(gcount);
+            section.appendChild(head);
+
+            qs.forEach(q => {
+                let row = document.createElement('div');
+                row.className = 'wheel-member-detail-row';
+                let t = document.createElement('span');
+                t.className = 'wheel-member-detail-q';
+                t.textContent = titleOf(q);
+                row.appendChild(t);
+                if (isScoringEnabled()) {
+                    let rating = getMemberQuestionScore(q.id, memberId);
+                    if (rating > 0) {
+                        let r = document.createElement('span');
+                        r.className = 'wheel-member-detail-rating';
+                        r.textContent = '★' + rating;
+                        r.title = rating + ' / 5';
+                        row.appendChild(r);
+                    }
+                }
+                section.appendChild(row);
+            });
+            body.appendChild(section);
+        });
+
+        modal.hidden = false;
+        playSound('navigate');
+    }
+
+    closeMemberDetail() {
+        let modal = document.getElementById('wheelMemberDetailModal');
+        if (modal) modal.hidden = true;
     }
 
     // Members currently in the rotation (disabled ones are sat out).
