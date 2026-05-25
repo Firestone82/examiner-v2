@@ -367,6 +367,27 @@ function togglePause() {
     playSound('pause');
 }
 
+// True when the current prompter run has any progress worth keeping. The
+// session is auto-saved as you go, so "progress" means at least one answered,
+// skipped or revisited question.
+function hasPrompterProgress() {
+    if (!examiner) return false;
+    return (stats.correctAttempts + stats.wrongAttempts + stats.skippedCount + questionHistory.length) > 0;
+}
+
+// Exit button: leave immediately when there's nothing to save, otherwise let
+// the user choose whether to keep their progress for next time.
+function confirmLeaveExaminer() {
+    if (!hasPrompterProgress()) {
+        clearSavedSession();
+        window.location.reload();
+        return;
+    }
+    showSaveLeaveDialog('examiner',
+        function () { window.location.reload(); },          // keep the auto-saved session
+        function () { clearSavedSession(); window.location.reload(); });
+}
+
 function confirmFinish() {
     showConfirmscreen("examiner", "Are you sure you want to finish?<br>Remaining questions will be skipped.", function () {
         playSound('end');
@@ -739,6 +760,15 @@ function renderRecentFiles() {
         dateSpan.className = 'recent-file-date';
         dateSpan.textContent = date;
 
+        let exportBtn = document.createElement('button');
+        exportBtn.className = 'recent-file-export';
+        exportBtn.innerHTML = '<span uk-icon="icon: download; ratio: 0.75;"></span>';
+        exportBtn.title = 'Export this DLC\'s saved progress';
+        exportBtn.onclick = function (e) {
+            e.stopPropagation();
+            exportDlcData(file.name);
+        };
+
         let delBtn = document.createElement('button');
         delBtn.className = 'recent-file-delete';
         delBtn.innerHTML = '&times;';
@@ -758,6 +788,7 @@ function renderRecentFiles() {
         }
 
         item.appendChild(dateSpan);
+        item.appendChild(exportBtn);
         item.appendChild(delBtn);
         list.appendChild(item);
     });
@@ -773,7 +804,37 @@ renderRecentFiles();
 // hard-coding individual keys (new keys are picked up automatically).
 
 const DATA_BACKUP_FILETYPE = 'examiner-backup';
+const DLC_DATA_FILETYPE = 'examiner-dlc-data';
 const DATA_KEY_PREFIX = 'examiner_';
+
+// Per-DLC keyed localStorage objects ({ [dlcName]: value }). A single-DLC
+// export pulls one entry from each of these; an import merges entries back.
+const DLC_KEYED_STORES = {
+    scores:       SCORES_KEY,
+    memberScores: MEMBER_SCORES_KEY,
+    wheelState:   WHEEL_STATE_KEY,
+    wheelMembers: WHEEL_MEMBERS_KEY,
+};
+
+function readStore(key) {
+    try { return JSON.parse(localStorage.getItem(key)) || {}; } catch { return {}; }
+}
+
+// Sets (or deletes when value is null/undefined) one DLC's entry in a keyed
+// store object and writes it back.
+function setStoreEntry(storageKey, name, value) {
+    let all = readStore(storageKey);
+    if (value == null) delete all[name];
+    else all[name] = value;
+    try { localStorage.setItem(storageKey, JSON.stringify(all)); } catch (e) {
+        console.warn('Could not write ' + storageKey + ':', e);
+    }
+}
+
+function fileBaseFor(name) {
+    return (typeof name === 'string' && name ? name : 'examiner')
+        .replace(/\.[^.]+$/, '').replace(/[^\w\-]+/g, '_') || 'examiner';
+}
 
 function triggerDownload(filename, content, mime) {
     let blob = new Blob([content], { type: mime });
@@ -814,30 +875,52 @@ function exportAllData() {
     if (typeof playSound === 'function') playSound('select');
 }
 
-function importAllData(contents) {
-    let backup;
-    try {
-        backup = JSON.parse(contents);
-    } catch (e) {
-        alert('Could not read backup file — it is not valid JSON.');
+// Exports the saved progress for a single DLC (scores, member ratings, wheel
+// state/roster, an in-progress prompter session and the DLC file itself) so it
+// can be moved on its own without the rest of the library.
+function exportDlcData(name) {
+    if (!name) { alert('No DLC to export.'); return; }
+
+    let bundle = {};
+    Object.keys(DLC_KEYED_STORES).forEach(field => {
+        let entry = readStore(DLC_KEYED_STORES[field])[name];
+        if (entry !== undefined) bundle[field] = entry;
+    });
+
+    let session = getSavedSession();
+    if (session && session.dlcName === name) bundle.session = session;
+
+    let recentFile = getRecentFiles().find(f => f.name === name);
+    if (recentFile) bundle.recentFile = recentFile;
+
+    if (Object.keys(bundle).length === 0) {
+        alert('No saved data for "' + name + '" yet.');
         return;
     }
 
-    if (!backup || backup.filetype !== DATA_BACKUP_FILETYPE || typeof backup.data !== 'object') {
-        alert('This file is not an Examiner data backup.');
-        return;
-    }
+    let payload = {
+        filetype: DLC_DATA_FILETYPE,
+        version: '1.0',
+        exportDate: new Date().toISOString(),
+        dlcName: name,
+        data: bundle,
+    };
+    triggerDownload(fileBaseFor(name) + '-progress.json',
+        JSON.stringify(payload, null, 2), 'application/json');
+    if (typeof playSound === 'function') playSound('select');
+}
 
+// Restores a full backup (every "examiner_" key) — a clean replace of all
+// stored data.
+function importFullBackup(backup) {
     let keys = Object.keys(backup.data).filter(k => k.startsWith(DATA_KEY_PREFIX));
     if (keys.length === 0) {
         alert('The backup file contains no data to import.');
         return;
     }
-
     showConfirmscreen('title',
-        'Import ' + keys.length + ' data item(s)?<br>This will overwrite your current data.',
+        'Import full backup of ' + keys.length + ' data item(s)?<br>This will overwrite all of your current data.',
         function () {
-            // Remove existing app data so the import is a clean restore.
             let existing = [];
             for (let i = 0; i < localStorage.length; i++) {
                 let key = localStorage.key(i);
@@ -849,9 +932,61 @@ function importAllData(contents) {
                 let v = backup.data[k];
                 if (typeof v === 'string') localStorage.setItem(k, v);
             });
-
             window.location.reload();
         });
+}
+
+// Merges one DLC's exported progress into the existing data, touching only
+// that DLC's entries.
+function importDlcData(payload) {
+    let name = payload.dlcName;
+    let bundle = payload.data;
+    if (!name || !bundle || typeof bundle !== 'object') {
+        alert('This DLC data export is missing its name or contents.');
+        return;
+    }
+    showConfirmscreen('title',
+        'Import saved progress for<br><em>' + name + '</em>?<br>This overwrites existing data for this DLC only.',
+        function () {
+            Object.keys(DLC_KEYED_STORES).forEach(field => {
+                if (field in bundle) setStoreEntry(DLC_KEYED_STORES[field], name, bundle[field]);
+            });
+            if (bundle.session && bundle.session.dlcName === name) {
+                try { localStorage.setItem(SESSION_KEY, JSON.stringify(bundle.session)); } catch {}
+            }
+            if (bundle.recentFile && bundle.recentFile.content) {
+                let entry = bundle.recentFile;
+                try {
+                    let recent = getRecentFiles().filter(f => f.name !== entry.name);
+                    recent.unshift({ name: entry.name, content: entry.content, timestamp: entry.timestamp || Date.now() });
+                    localStorage.setItem(RECENT_FILES_KEY, JSON.stringify(recent.slice(0, RECENT_FILES_MAX)));
+                } catch {}
+            }
+            window.location.reload();
+        });
+}
+
+// Reads an imported file and routes it to the right handler based on its
+// declared filetype (full backup vs single-DLC export).
+function handleImportFile(contents) {
+    let parsed;
+    try {
+        parsed = JSON.parse(contents);
+    } catch (e) {
+        alert('Could not read file — it is not valid JSON.');
+        return;
+    }
+    if (!parsed || typeof parsed !== 'object' || typeof parsed.data !== 'object') {
+        alert('This file is not an Examiner data export.');
+        return;
+    }
+    if (parsed.filetype === DATA_BACKUP_FILETYPE) {
+        importFullBackup(parsed);
+    } else if (parsed.filetype === DLC_DATA_FILETYPE) {
+        importDlcData(parsed);
+    } else {
+        alert('This file is not an Examiner backup or DLC progress export.');
+    }
 }
 
 document.getElementById('import-data-input').addEventListener('change', function (e) {
@@ -859,7 +994,7 @@ document.getElementById('import-data-input').addEventListener('change', function
     if (!file) return;
     let reader = new FileReader();
     reader.onload = function (ev) {
-        importAllData(ev.target.result);
+        handleImportFile(ev.target.result);
     };
     reader.readAsText(file);
     // Reset so the same file can be selected again

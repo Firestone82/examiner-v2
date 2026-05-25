@@ -81,15 +81,19 @@ function isMeaningfulWheelState(saved, questions) {
     return false;
 }
 
-// Leaving the wheel discards its saved state (after confirmation) and returns
-// to the start screen. A plain browser refresh keeps the state instead.
+// Leaving the wheel: when there's nothing worth keeping, just go back to the
+// start screen; otherwise let the user choose to keep the wheel state (which is
+// already auto-saved) or discard it.
 function leaveWheel() {
-    showConfirmscreen('wheelView',
-        'Are you sure you want to leave?<br>The wheel will reset.',
-        function () {
-            clearWheelState(typeof currentDlcName === 'string' ? currentDlcName : null);
-            window.location.reload();
-        });
+    let name = (typeof currentDlcName === 'string') ? currentDlcName : null;
+    if (!wheelInstance || !wheelInstance.hasMeaningfulProgress()) {
+        clearWheelState(name);
+        window.location.reload();
+        return;
+    }
+    showSaveLeaveDialog('wheelView',
+        function () { window.location.reload(); },                  // keep the auto-saved state
+        function () { clearWheelState(name); window.location.reload(); });
 }
 
 const WHEEL_DEFAULT_PREFS = {
@@ -289,6 +293,24 @@ class QuestionsWheel {
             collapsed: Array.from(this.collapsedGroups),
             answered: this.answered,
         });
+    }
+
+    // Whether the wheel state holds anything the user would miss on reset:
+    // hidden questions, recorded answers, or a reordered wheel. (Star ratings
+    // live outside this state and are never lost on leave.)
+    hasMeaningfulProgress() {
+        if (this.hidden.size > 0) return true;
+        if (Object.keys(this.answered).some(qid =>
+            Array.isArray(this.answered[qid]) && this.answered[qid].length > 0)) {
+            return true;
+        }
+        let orig = this.questions.map(q => q.id);
+        let cur = this.wheelOrder.map(q => q.id);
+        if (cur.length !== orig.length) return true;
+        for (let i = 0; i < orig.length; i++) {
+            if (cur[i] !== orig[i]) return true;
+        }
+        return false;
     }
 
     attach() {
@@ -617,6 +639,15 @@ class QuestionsWheel {
 
         let membersBtn = document.getElementById('wheelModalMembersBtn');
         if (membersBtn) membersBtn.onclick = () => this.toggleMembersPanel();
+
+        let exportDataBtn = document.getElementById('wheelExportDataBtn');
+        if (exportDataBtn) {
+            exportDataBtn.onclick = () => {
+                let panel = document.getElementById('wheelConfigPanel');
+                if (panel) panel.hidden = true;
+                exportDlcData(currentDlcName);
+            };
+        }
 
         let exportBtn = document.getElementById('wheelExportRatingsBtn');
         if (exportBtn) {
@@ -1173,7 +1204,9 @@ class QuestionsWheel {
     toggleAnswered(memberId) {
         if (!this.selected || this.rolling) return;
         let member = this.members.find(m => m.id === memberId);
-        if (!member || member.disabled) return;
+        // Disabled members can still have their answered state tracked — they
+        // just don't gate question completion (which only counts active ones).
+        if (!member) return;
         let qid = this.selected.id;
         let list = this.answered[qid] ? this.answered[qid].slice() : [];
         let pos = list.indexOf(memberId);
@@ -1359,14 +1392,30 @@ class QuestionsWheel {
 
         this.members.forEach(m => {
             let disabled = m.disabled;
-            let answered = !disabled && qid != null && this.isAnswered(qid, m.id);
+            // Answered is tracked for disabled members too, so their box still
+            // reflects whether they answered.
+            let answered = qid != null && this.isAnswered(qid, m.id);
             let row = document.createElement('div');
             row.className = 'wheel-member-row'
                 + (disabled ? ' disabled' : '')
                 + (answered ? ' answered' : '')
                 + (m.id === this.rolledMemberId ? ' rolled' : '');
             row.dataset.memberId = m.id;
-            if (!disabled) row.onclick = () => this.toggleAnswered(m.id);
+            row.title = 'Click to toggle answered • double-click to '
+                + (disabled ? 'enable' : 'disable');
+
+            // Single click toggles answered; double-click toggles the member's
+            // enabled state. A short delay lets us tell the two apart so a
+            // double-click doesn't also flip the answered box.
+            let clickTimer = null;
+            row.onclick = () => {
+                if (clickTimer) return;
+                clickTimer = setTimeout(() => { clickTimer = null; this.toggleAnswered(m.id); }, 220);
+            };
+            row.ondblclick = () => {
+                if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
+                this.setMemberDisabled(m.id, !m.disabled);
+            };
 
             let check = document.createElement('span');
             check.className = 'wheel-member-check';
@@ -2101,15 +2150,27 @@ class QuestionsWheel {
         let header = document.querySelector('#wheelModalBody .wheel-modal-answers-header');
         let list = document.querySelector('#wheelModalBody .wheel-modal-answers');
 
-        let canShow = hasHints && this.prefs.showHints;
-        btn.hidden = !canShow;
-        if (!canShow) {
-            // Hide hint elements entirely
+        // The button is hidden only when hints are turned off globally. With
+        // hints on but none for this question, it stays visible but disabled
+        // and reads "No hint".
+        if (!this.prefs.showHints) {
+            btn.hidden = true;
             if (header) header.style.display = 'none';
             if (list) list.style.display = 'none';
             return;
         }
 
+        btn.hidden = false;
+
+        if (!hasHints) {
+            btn.disabled = true;
+            btn.textContent = 'No hint';
+            if (header) header.style.display = 'none';
+            if (list) list.style.display = 'none';
+            return;
+        }
+
+        btn.disabled = false;
         if (this.hintRevealed) {
             btn.textContent = 'Hide hint';
             if (header) header.style.display = '';
