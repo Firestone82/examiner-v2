@@ -1801,6 +1801,9 @@ p.answer.dismissed {
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
+    /* Show up to ~8 members, then scroll. */
+    max-height: 21rem;
+    overflow-y: auto;
 }
 
 .wheel-member-row {
@@ -1986,7 +1989,8 @@ p.answer.dismissed {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
-    max-height: 9rem;
+    /* Show up to ~8 members, then scroll. */
+    max-height: 15.5rem;
     overflow-y: auto;
 }
 
