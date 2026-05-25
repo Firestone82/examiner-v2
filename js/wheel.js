@@ -569,6 +569,20 @@ class QuestionsWheel {
         let rollBtn = document.getElementById('wheelMembersRollBtn');
         if (rollBtn) rollBtn.onclick = () => this.rollMember();
 
+        let rollCloseBtn = document.getElementById('memberRollClose');
+        if (rollCloseBtn) rollCloseBtn.onclick = () => this.closeMemberRoll();
+        let rollAgainBtn = document.getElementById('memberRollAgain');
+        if (rollAgainBtn) {
+            rollAgainBtn.onclick = () => {
+                if (this.rolling || !this.selected) return;
+                let pool = this.unansweredMembers(this.selected.id);
+                if (pool.length < 2) { this.closeMemberRoll(); return; }
+                this._rollPool = pool;
+                this.renderMemberRollWheel(pool);
+                this.spinMemberRoll();
+            };
+        }
+
         let membersBtn = document.getElementById('wheelModalMembersBtn');
         if (membersBtn) membersBtn.onclick = () => this.toggleMembersPanel();
 
@@ -963,46 +977,164 @@ class QuestionsWheel {
             return;
         }
 
-        let picked = pool[Math.floor(Math.random() * pool.length)];
-        let showAt = (m) => {
-            this.rolledMemberId = m.id;
-            if (resultEl) { resultEl.hidden = false; resultEl.textContent = '🎲 ' + m.name; }
-            this.renderMembersPanel();
-        };
-
-        // One candidate — nothing to cycle through, land immediately.
+        // One candidate — nothing to spin, land immediately.
         if (pool.length === 1) {
-            showAt(picked);
+            this.landRolledMember(pool[0]);
             playSound('wheel-land');
             return;
         }
 
-        // Slot-machine cycle: hop between candidates, easing out the delay
-        // between hops until landing on the pre-picked member.
-        this.rolling = true;
-        let duration = 1500;
-        let start = performance.now();
-        let idx = Math.floor(Math.random() * pool.length);
-        let tick = () => {
-            let t = Math.min(1, (performance.now() - start) / duration);
-            if (t >= 1) {
-                this._rollTimer = null;
-                this.rolling = false;
-                showAt(picked);
-                playSound('wheel-land');
-                return;
-            }
-            idx = (idx + 1) % pool.length;
-            showAt(pool[idx]);
-            playSound('wheel-tick', 0.5);
-            this._rollTimer = setTimeout(tick, 55 + 280 * easeOutQuint(t));
-        };
-        tick();
+        this.openMemberRoll(pool);
+    }
+
+    // Records the roll result on the side panel (and highlights the member).
+    landRolledMember(member) {
+        this.rolledMemberId = member.id;
+        let resultEl = document.getElementById('wheelMembersRollResult');
+        if (resultEl) { resultEl.hidden = false; resultEl.textContent = '🎲 ' + member.name; }
+        this.renderMembersPanel();
+    }
+
+    // Opens the spinning member wheel over the question modal and spins it.
+    openMemberRoll(pool) {
+        let overlay = document.getElementById('memberRollOverlay');
+        if (!overlay) { this.landRolledMember(pool[Math.floor(Math.random() * pool.length)]); return; }
+        this._rollPool = pool;
+        this._memberRollRotation = 0;
+        let spinner = document.getElementById('memberRollSpinner');
+        if (spinner) { spinner.style.transition = 'none'; spinner.style.transform = 'rotate(0deg)'; }
+        let resultEl = document.getElementById('memberRollResult');
+        if (resultEl) { resultEl.hidden = true; resultEl.textContent = ''; }
+        let againBtn = document.getElementById('memberRollAgain');
+        if (againBtn) againBtn.hidden = true;
+        this.renderMemberRollWheel(pool);
+        overlay.hidden = false;
+        requestAnimationFrame(() => this.spinMemberRoll());
+    }
+
+    closeMemberRoll() {
+        this.cancelRoll();
+        playSound('next');
+        this.renderMembersPanel();
     }
 
     cancelRoll() {
         if (this._rollTimer) { clearTimeout(this._rollTimer); this._rollTimer = null; }
         this.rolling = false;
+        let overlay = document.getElementById('memberRollOverlay');
+        if (overlay) overlay.hidden = true;
+    }
+
+    renderMemberRollWheel(pool) {
+        let svg = document.getElementById('memberRollSvg');
+        if (!svg) return;
+        while (svg.firstChild) svg.removeChild(svg.firstChild);
+        let cx = 200, cy = 200, radius = 192;
+        let n = pool.length;
+        let palette = ['#e53935', '#1e88e5', '#43a047', '#fb8c00', '#8e24aa',
+                       '#00897b', '#fdd835', '#6d4c41', '#d81b60', '#3949ab'];
+        let step = 360 / n;
+        for (let i = 0; i < n; i++) {
+            let startAngle = i * step - 90;
+            let endAngle = startAngle + step;
+            let sector = document.createElementNS(WHEEL_SVG_NS, 'path');
+            sector.setAttribute('d', this.makeSectorPath(cx, cy, radius, startAngle, endAngle));
+            sector.setAttribute('fill', palette[i % palette.length]);
+            sector.setAttribute('stroke', '#1a1a1a');
+            sector.setAttribute('stroke-width', '2');
+            svg.appendChild(sector);
+            this.appendMemberLabel(svg, pool[i].name, cx, cy, radius, startAngle + step / 2, step);
+        }
+    }
+
+    appendMemberLabel(svg, text, cx, cy, radius, midAngle, step) {
+        let innerR = radius * 0.2, outerR = radius - 14;
+        let textRadius = (innerR + outerR) / 2;
+        let pos = polarToCartesian(cx, cy, textRadius, midAngle);
+        let angularLimit = textRadius * (step * Math.PI / 180) * 0.8;
+        let fontSize = Math.max(9, Math.min(angularLimit, 20));
+        let txt = document.createElementNS(WHEEL_SVG_NS, 'text');
+        txt.setAttribute('x', pos.x);
+        txt.setAttribute('y', pos.y);
+        txt.setAttribute('text-anchor', 'middle');
+        txt.setAttribute('dominant-baseline', 'middle');
+        txt.setAttribute('fill', '#ffffff');
+        txt.setAttribute('font-weight', 'bold');
+        txt.setAttribute('font-size', fontSize);
+        txt.setAttribute('paint-order', 'stroke');
+        txt.setAttribute('stroke', 'rgba(0,0,0,0.55)');
+        txt.setAttribute('stroke-width', Math.max(1, fontSize * 0.1));
+        txt.setAttribute('stroke-linejoin', 'round');
+        txt.setAttribute('transform', 'rotate(' + (midAngle + 180) + ' ' + pos.x + ' ' + pos.y + ')');
+        txt.style.pointerEvents = 'none';
+        txt.textContent = text;
+        svg.appendChild(txt);
+
+        let availLen = outerR - innerR;
+        try {
+            if (txt.getBBox().width > availLen) {
+                let lo = 0, hi = text.length - 1, best = 0;
+                while (lo <= hi) {
+                    let mid = (lo + hi) >> 1;
+                    txt.textContent = text.substring(0, mid) + '…';
+                    if (txt.getBBox().width <= availLen) { best = mid; lo = mid + 1; }
+                    else hi = mid - 1;
+                }
+                txt.textContent = best === 0 ? '…' : text.substring(0, best) + '…';
+            }
+        } catch (e) {}
+    }
+
+    spinMemberRoll() {
+        if (this.rolling) return;
+        let overlay = document.getElementById('memberRollOverlay');
+        let spinner = document.getElementById('memberRollSpinner');
+        let pool = this._rollPool || [];
+        let n = pool.length;
+        if (!overlay || !spinner || n === 0) return;
+
+        this.rolling = true;
+        this.renderMembersPanel();
+        let resultEl = document.getElementById('memberRollResult');
+        let againBtn = document.getElementById('memberRollAgain');
+        if (resultEl) resultEl.hidden = true;
+        if (againBtn) againBtn.hidden = true;
+
+        let step = 360 / n;
+        let pickedIdx = Math.floor(Math.random() * n);
+        let picked = pool[pickedIdx];
+        let midAngle = pickedIdx * step - 90 + step / 2;
+        let randomOffset = (Math.random() - 0.5) * step * 0.6;
+        let targetMod = -90 - midAngle + randomOffset;
+        let normalize = (a) => ((a % 360) + 360) % 360;
+        let delta = normalize(targetMod) - normalize(this._memberRollRotation || 0);
+        if (delta < 0) delta += 360;
+        let totalDelta = delta + 360 * 5;
+        let startRotation = this._memberRollRotation || 0;
+        this._memberRollRotation = startRotation + totalDelta;
+
+        spinner.style.transition = 'none';
+        let startTime = performance.now();
+        let duration = Math.min(this.prefs.spinTimeMs, 3000);
+        let lastTick = 0;
+        let animate = (now) => {
+            if (overlay.hidden) { this.rolling = false; return; }
+            let t = Math.min(1, (now - startTime) / duration);
+            let rot = startRotation + totalDelta * easeOutQuint(t);
+            spinner.style.transform = 'rotate(' + rot + 'deg)';
+            let passed = Math.floor((rot - startRotation) / step);
+            while (lastTick < passed) { lastTick++; playSound('wheel-tick', 0.5); }
+            if (t < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                this.rolling = false;
+                playSound('wheel-land');
+                this.landRolledMember(picked);
+                if (resultEl) { resultEl.hidden = false; resultEl.textContent = '🎲 ' + picked.name; }
+                if (againBtn) againBtn.hidden = false;
+            }
+        };
+        requestAnimationFrame(animate);
     }
 
     applyMembersButton() {
@@ -1744,7 +1876,10 @@ class QuestionsWheel {
         let rollResult = document.getElementById('wheelMembersRollResult');
         if (rollResult) { rollResult.hidden = true; rollResult.textContent = ''; }
         this.applyMembersButton();
-        if (!this.prefs.membersEnabled) this.closeMembersPanel();
+        // With the feature on, the roster is shown by default in the question
+        // view; otherwise the panel stays closed.
+        let membersPanel = document.getElementById('wheelMembersPanel');
+        if (membersPanel) membersPanel.hidden = !this.prefs.membersEnabled;
         this.renderMembersPanel();
 
         modal.hidden = false;

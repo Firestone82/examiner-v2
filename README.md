@@ -218,13 +218,15 @@ restored whenever the same DLC is reopened.
 - The roster panel also has two bulk actions: **Show unanswered** brings back
   every question that an enabled member still hasn't answered, and **Hide
   answered** hides every question all enabled members have already answered.
-- When viewing a question, a members button (top-right of the question box)
-  expands the members list on the right side of the modal. There you can:
+- When viewing a question the members list is shown on the right side of the
+  modal by default (the members button top-right of the question box hides or
+  re-shows it). There you can:
   - mark each member as having answered the current question (click to
     toggle), and
-  - **Roll** a random member who has not answered the question yet — the
-    pick cycles through the remaining candidates and slows to a stop on the
-    chosen one.
+  - **Roll** a random member who has not answered the question yet — this
+    opens a spinning wheel over the question with the eligible (enabled,
+    not-yet-answered) members and lands on one. "Roll again" re-spins; "Done"
+    closes the wheel with the picked member highlighted.
 - Each member's answered status is saved per question (and per DLC) so it
   survives reloads, just like hidden questions.
 - When every member has answered a question, that question is automatically
