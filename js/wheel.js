@@ -851,6 +851,11 @@ class QuestionsWheel {
             toggle.title = m.disabled ? 'Disabled — click to enable' : 'Enabled — click to disable';
             toggle.onclick = () => this.setMemberDisabled(m.id, !m.disabled);
 
+            let count = document.createElement('span');
+            count.className = 'wheel-member-count';
+            count.textContent = '(' + this.answeredCountForMember(m.id) + ')';
+            count.title = 'Questions answered';
+
             let del = document.createElement('button');
             del.type = 'button';
             del.className = 'wheel-member-config-remove';
@@ -859,6 +864,7 @@ class QuestionsWheel {
             del.onclick = () => this.removeMember(m.id);
 
             row.appendChild(nameInput);
+            row.appendChild(count);
             row.appendChild(toggle);
             row.appendChild(del);
             list.appendChild(row);
@@ -871,6 +877,16 @@ class QuestionsWheel {
 
     isAnswered(qid, memberId) {
         return this.answeredIds(qid).indexOf(memberId) >= 0;
+    }
+
+    // Total number of questions this member has marked answered (across the
+    // whole DLC).
+    answeredCountForMember(memberId) {
+        let n = 0;
+        for (let qid in this.answered) {
+            if (this.answered[qid].indexOf(memberId) >= 0) n++;
+        }
+        return n;
     }
 
     // Members currently in the rotation (disabled ones are sat out).
@@ -1195,8 +1211,14 @@ class QuestionsWheel {
             name.className = 'wheel-member-name';
             name.textContent = m.name;
 
+            let count = document.createElement('span');
+            count.className = 'wheel-member-count';
+            count.textContent = '(' + this.answeredCountForMember(m.id) + ')';
+            count.title = 'Questions answered';
+
             row.appendChild(check);
             row.appendChild(name);
+            row.appendChild(count);
 
             if (disabled) {
                 let tag = document.createElement('span');

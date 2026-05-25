@@ -1888,6 +1888,14 @@ p.answer.dismissed {
     white-space: nowrap;
 }
 
+.wheel-member-count {
+    flex-shrink: 0;
+    color: #8899aa;
+    font-size: 0.72rem;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
 .wheel-member-rolled-tag {
     flex-shrink: 0;
     font-size: 0.85rem;
