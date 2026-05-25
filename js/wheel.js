@@ -44,7 +44,9 @@ function loadWheelMembers(name) {
     try {
         let list = (JSON.parse(localStorage.getItem(WHEEL_MEMBERS_KEY)) || {})[name];
         return Array.isArray(list)
-            ? list.filter(m => m && typeof m.id === 'string' && typeof m.name === 'string')
+            ? list
+                .filter(m => m && typeof m.id === 'string' && typeof m.name === 'string')
+                .map(m => ({ id: m.id, name: m.name, disabled: m.disabled === true }))
             : [];
     } catch { return []; }
 }
@@ -731,7 +733,7 @@ class QuestionsWheel {
             return false;
         }
         let id = 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-        this.members.push({ id, name });
+        this.members.push({ id, name, disabled: false });
         saveWheelMembers(this.stateName, this.members);
         this.renderMembersConfig();
         this.renderMembersPanel();
@@ -758,6 +760,43 @@ class QuestionsWheel {
         playSound('deselect');
     }
 
+    // Renames a member in place. Returns false (and changes nothing) when the
+    // name is empty or already taken by another member.
+    renameMember(id, name) {
+        name = (name || '').trim();
+        if (!name) return false;
+        let m = this.members.find(x => x.id === id);
+        if (!m) return false;
+        if (this.members.some(x => x.id !== id && x.name.toLowerCase() === name.toLowerCase())) {
+            return false;
+        }
+        if (m.name === name) return true;
+        m.name = name;
+        saveWheelMembers(this.stateName, this.members);
+        this.renderMembersConfig();
+        this.renderMembersPanel();
+        this.renderSidebar();
+        return true;
+    }
+
+    // Temporarily takes a member out of the rotation (or puts them back).
+    // Disabled members are skipped by the roll and don't count toward
+    // completion — disabling the last pending member can complete a question.
+    setMemberDisabled(id, disabled) {
+        let m = this.members.find(x => x.id === id);
+        if (!m || m.disabled === disabled) return;
+        m.disabled = disabled;
+        saveWheelMembers(this.stateName, this.members);
+        if (disabled && this.rolledMemberId === id) this.rolledMemberId = null;
+        playSound(disabled ? 'deselect' : 'select');
+        this.renderMembersConfig();
+        if (!this.maybeCompleteSelected()) {
+            this.persistState();
+            this.renderMembersPanel();
+            this.renderSidebar();
+        }
+    }
+
     renderMembersConfig() {
         let list = document.getElementById('wheelMembersConfigList');
         if (!list) return;
@@ -771,17 +810,37 @@ class QuestionsWheel {
         }
         this.members.forEach(m => {
             let row = document.createElement('div');
-            row.className = 'wheel-member-config-row';
-            let name = document.createElement('span');
-            name.className = 'wheel-member-config-name';
-            name.textContent = m.name;
+            row.className = 'wheel-member-config-row' + (m.disabled ? ' disabled' : '');
+
+            let nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.className = 'wheel-member-config-name-input';
+            nameInput.value = m.name;
+            nameInput.maxLength = 40;
+            nameInput.title = 'Rename member';
+            // Keep typing local — don't trigger spacebar-spin or panel close.
+            nameInput.addEventListener('keydown', e => e.stopPropagation());
+            let commit = () => { if (!this.renameMember(m.id, nameInput.value)) nameInput.value = m.name; };
+            nameInput.addEventListener('blur', commit);
+            nameInput.addEventListener('keydown', e => {
+                if (e.key === 'Enter') { e.preventDefault(); nameInput.blur(); }
+                else if (e.key === 'Escape') { nameInput.value = m.name; nameInput.blur(); }
+            });
+
+            let toggle = document.createElement('span');
+            toggle.className = 'sound-switch wheel-member-enable-switch' + (m.disabled ? '' : ' on');
+            toggle.title = m.disabled ? 'Disabled — click to enable' : 'Enabled — click to disable';
+            toggle.onclick = () => this.setMemberDisabled(m.id, !m.disabled);
+
             let del = document.createElement('button');
             del.type = 'button';
             del.className = 'wheel-member-config-remove';
             del.title = 'Remove member';
             del.textContent = '✕';
             del.onclick = () => this.removeMember(m.id);
-            row.appendChild(name);
+
+            row.appendChild(nameInput);
+            row.appendChild(toggle);
             row.appendChild(del);
             list.appendChild(row);
         });
@@ -795,19 +854,26 @@ class QuestionsWheel {
         return this.answeredIds(qid).indexOf(memberId) >= 0;
     }
 
-    unansweredMembers(qid) {
-        let done = new Set(this.answeredIds(qid));
-        return this.members.filter(m => !done.has(m.id));
+    // Members currently in the rotation (disabled ones are sat out).
+    activeMembers() {
+        return this.members.filter(m => !m.disabled);
     }
 
-    // A question is complete only when there's at least one member and none of
-    // them are still pending.
+    unansweredMembers(qid) {
+        let done = new Set(this.answeredIds(qid));
+        return this.activeMembers().filter(m => !done.has(m.id));
+    }
+
+    // A question is complete only when there's at least one active member and
+    // none of them are still pending.
     allAnswered(qid) {
-        return this.members.length > 0 && this.unansweredMembers(qid).length === 0;
+        return this.activeMembers().length > 0 && this.unansweredMembers(qid).length === 0;
     }
 
     toggleAnswered(memberId) {
         if (!this.selected || this.rolling) return;
+        let member = this.members.find(m => m.id === memberId);
+        if (!member || member.disabled) return;
         let qid = this.selected.id;
         let list = this.answered[qid] ? this.answered[qid].slice() : [];
         let pos = list.indexOf(memberId);
@@ -818,23 +884,27 @@ class QuestionsWheel {
         else delete this.answered[qid];
         if (this.rolledMemberId === memberId && !wasAnswered) this.rolledMemberId = null;
 
-        // Everyone answered → mark the question hidden on the wheel, but keep
-        // the modal open so the user can review it (or undo a mark). They
-        // close the view themselves.
-        if (this.allAnswered(qid)) {
-            if (!this.hidden.has(qid)) {
-                this.hidden.add(qid);
-                this.resetSpinner();
-            }
-            playSound('navigate');
-            this.render();
-            this.renderMembersPanel();
-            return;
-        }
+        if (this.maybeCompleteSelected()) return;
         playSound(wasAnswered ? 'deselect' : 'select');
         this.persistState();
         this.renderMembersPanel();
         this.renderSidebar();
+    }
+
+    // When every active member has answered the open question, mark it hidden
+    // on the wheel but keep the modal open (the user closes it themselves).
+    // Returns true when it handled completion.
+    maybeCompleteSelected() {
+        if (!this.selected || !this.allAnswered(this.selected.id)) return false;
+        let qid = this.selected.id;
+        if (!this.hidden.has(qid)) {
+            this.hidden.add(qid);
+            this.resetSpinner();
+        }
+        playSound('navigate');
+        this.render();
+        this.renderMembersPanel();
+        return true;
     }
 
     rollMember() {
@@ -933,16 +1003,18 @@ class QuestionsWheel {
         }
         if (empty) empty.hidden = true;
 
-        let pending = qid != null ? this.unansweredMembers(qid).length : this.members.length;
+        let pending = qid != null ? this.unansweredMembers(qid).length : this.activeMembers().length;
         if (rollBtn) rollBtn.disabled = pending === 0 || this.rolling;
 
         this.members.forEach(m => {
-            let answered = qid != null && this.isAnswered(qid, m.id);
+            let disabled = m.disabled;
+            let answered = !disabled && qid != null && this.isAnswered(qid, m.id);
             let row = document.createElement('div');
             row.className = 'wheel-member-row'
+                + (disabled ? ' disabled' : '')
                 + (answered ? ' answered' : '')
                 + (m.id === this.rolledMemberId ? ' rolled' : '');
-            row.onclick = () => this.toggleAnswered(m.id);
+            if (!disabled) row.onclick = () => this.toggleAnswered(m.id);
 
             let check = document.createElement('span');
             check.className = 'wheel-member-check';
@@ -955,7 +1027,12 @@ class QuestionsWheel {
             row.appendChild(check);
             row.appendChild(name);
 
-            if (m.id === this.rolledMemberId && !answered) {
+            if (disabled) {
+                let tag = document.createElement('span');
+                tag.className = 'wheel-member-disabled-tag';
+                tag.textContent = 'disabled';
+                row.appendChild(tag);
+            } else if (m.id === this.rolledMemberId && !answered) {
                 let tag = document.createElement('span');
                 tag.className = 'wheel-member-rolled-tag';
                 tag.textContent = '🎲';
@@ -1439,14 +1516,17 @@ class QuestionsWheel {
             }
         }
 
-        if (this.prefs.membersEnabled && this.members.length > 0) {
-            let answeredCount = this.answeredIds(question.id).length;
-            let badge = document.createElement('span');
-            badge.className = 'wheel-member-progress'
-                + (answeredCount >= this.members.length ? ' complete' : '');
-            badge.textContent = answeredCount + '/' + this.members.length;
-            badge.title = answeredCount + ' of ' + this.members.length + ' members answered';
-            item.appendChild(badge);
+        if (this.prefs.membersEnabled) {
+            let active = this.activeMembers();
+            if (active.length > 0) {
+                let answeredCount = active.reduce((n, m) => n + (this.isAnswered(question.id, m.id) ? 1 : 0), 0);
+                let badge = document.createElement('span');
+                badge.className = 'wheel-member-progress'
+                    + (answeredCount >= active.length ? ' complete' : '');
+                badge.textContent = answeredCount + '/' + active.length;
+                badge.title = answeredCount + ' of ' + active.length + ' active members answered';
+                item.appendChild(badge);
+            }
         }
 
         item.appendChild(openBtn);

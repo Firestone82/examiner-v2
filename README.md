@@ -211,7 +211,10 @@ people answering each question. The member roster is saved per DLC, so it is
 restored whenever the same DLC is reopened.
 
 - Once enabled, a people icon appears next to the gear button in the header.
-  Click it to open the roster panel and add / remove members.
+  Click it to open the roster panel, where you can add members, rename them
+  (click the name and type), remove them, or temporarily disable one with the
+  per-member switch. Disabled members are skipped by the roll and don't count
+  toward a question's completion until re-enabled.
 - When viewing a question, a members button (top-right of the question box)
   expands the members list on the right side of the modal. There you can:
   - mark each member as having answered the current question (click to
