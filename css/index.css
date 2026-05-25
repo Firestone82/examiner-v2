@@ -1196,7 +1196,7 @@ p.answer.dismissed {
     border-radius: 50%;
     border: 1px solid rgba(255,255,255,0.15);
     background: var(--q-color);
-    color: #cfe0f0;
+    color: var(--q-color);
     cursor: pointer;
     display: inline-flex;
     align-items: center;
@@ -1221,7 +1221,6 @@ p.answer.dismissed {
 }
 
 .wheel-question-color:hover {
-    color: #1e87f0;
     transform: scale(1.15);
 }
 
