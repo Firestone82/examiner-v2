@@ -1408,10 +1408,22 @@ class QuestionsWheel {
                 + (answered ? ' answered' : '')
                 + (m.id === this.rolledMemberId ? ' rolled' : '');
             row.dataset.memberId = m.id;
+            row.title = 'Click the box to mark answered • double-click to '
+                + (disabled ? 'enable' : 'disable');
+
+            // Double-clicking the row (anywhere but the checkbox and stars,
+            // which stop propagation) toggles the member's enabled state. A
+            // single click on the row body does nothing.
+            row.ondblclick = () => this.setMemberDisabled(m.id, !m.disabled);
 
             let check = document.createElement('span');
             check.className = 'wheel-member-check';
             check.textContent = answered ? '✓' : '';
+            check.title = answered ? 'Answered — click to unmark' : 'Mark answered';
+            // A single click on the box toggles answered instantly; its
+            // dblclick is swallowed so it never toggles the enabled state.
+            check.onclick = (e) => { e.stopPropagation(); this.toggleAnswered(m.id); };
+            check.ondblclick = (e) => e.stopPropagation();
 
             let name = document.createElement('span');
             name.className = 'wheel-member-name';
@@ -1420,35 +1432,20 @@ class QuestionsWheel {
             row.appendChild(check);
             row.appendChild(name);
 
-            if (disabled) {
-                // Sitting out — a single click anywhere on the row (the box
-                // included) brings them back into the rotation. No answered or
-                // rating interaction while disabled.
-                row.title = 'Click to enable';
-                row.onclick = () => this.setMemberDisabled(m.id, false);
-            } else {
-                // Enabled: the box toggles answered, the stars rate the
-                // question, and clicking the rest of the row disables them.
-                row.title = 'Click to disable • click the box to mark answered';
-                row.onclick = () => this.setMemberDisabled(m.id, true);
-                check.title = answered ? 'Answered — click to unmark' : 'Mark answered';
-                check.onclick = (e) => { e.stopPropagation(); this.toggleAnswered(m.id); };
+            if (!disabled && m.id === this.rolledMemberId && !answered) {
+                let tag = document.createElement('span');
+                tag.className = 'wheel-member-rolled-tag';
+                tag.textContent = '🎲';
+                row.appendChild(tag);
+            }
 
-                if (m.id === this.rolledMemberId && !answered) {
-                    let tag = document.createElement('span');
-                    tag.className = 'wheel-member-rolled-tag';
-                    tag.textContent = '🎲';
-                    row.appendChild(tag);
-                }
-
-                // Each member rates how hard the current question was; the
-                // average feeds the question's overall rating.
-                if (qid != null && isScoringEnabled()) {
-                    row.appendChild(buildMemberStarWidget(qid, m.id, () => {
-                        this.refreshModalScore();
-                        this.renderSidebar();
-                    }));
-                }
+            // Each member rates how hard the current question was; the average
+            // feeds the question's overall rating.
+            if (qid != null && isScoringEnabled()) {
+                row.appendChild(buildMemberStarWidget(qid, m.id, () => {
+                    this.refreshModalScore();
+                    this.renderSidebar();
+                }));
             }
 
             list.appendChild(row);
