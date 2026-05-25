@@ -512,9 +512,6 @@ function buildMemberStarWidget(qid, memberId, onChange) {
         stars.appendChild(star);
     }
     stars.onclick = function (e) { e.stopPropagation(); };
-    // Double-clicking a member row toggles their enabled state; rating them
-    // shouldn't trigger that, so swallow dblclick on the stars too.
-    stars.ondblclick = function (e) { e.stopPropagation(); };
     stars.onmouseleave = function () { paintStars(stars, getMemberQuestionScore(qid, memberId)); };
     paintStars(stars, getMemberQuestionScore(qid, memberId));
     return stars;

@@ -1401,25 +1401,20 @@ class QuestionsWheel {
                 + (answered ? ' answered' : '')
                 + (m.id === this.rolledMemberId ? ' rolled' : '');
             row.dataset.memberId = m.id;
-            row.title = 'Click to toggle answered • double-click to '
-                + (disabled ? 'enable' : 'disable');
+            row.title = (disabled ? 'Click to enable' : 'Click to disable')
+                + ' • click the box to mark answered';
 
-            // Single click toggles answered; double-click toggles the member's
-            // enabled state. A short delay lets us tell the two apart so a
-            // double-click doesn't also flip the answered box.
-            let clickTimer = null;
-            row.onclick = () => {
-                if (clickTimer) return;
-                clickTimer = setTimeout(() => { clickTimer = null; this.toggleAnswered(m.id); }, 220);
-            };
-            row.ondblclick = () => {
-                if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
-                this.setMemberDisabled(m.id, !m.disabled);
-            };
+            // Clicking the row body (anywhere but the checkbox and the rating
+            // stars) toggles the member's enabled state.
+            row.onclick = () => this.setMemberDisabled(m.id, !m.disabled);
 
             let check = document.createElement('span');
             check.className = 'wheel-member-check';
             check.textContent = answered ? '✓' : '';
+            check.title = answered ? 'Answered — click to unmark' : 'Mark answered';
+            // The checkbox toggles answered instantly and must not bubble up to
+            // the row's enable/disable handler.
+            check.onclick = (e) => { e.stopPropagation(); this.toggleAnswered(m.id); };
 
             let name = document.createElement('span');
             name.className = 'wheel-member-name';
