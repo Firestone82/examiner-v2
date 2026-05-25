@@ -381,7 +381,7 @@ function setScoringEnabled(enabled) {
 function populateScoreWidget(parent, qid, onChange) {
     let label = document.createElement('span');
     label.className = 'score-label';
-    label.textContent = 'Question difficulty';
+    label.textContent = 'How well do you know the question?';
     parent.appendChild(label);
 
     let stars = document.createElement('div');
