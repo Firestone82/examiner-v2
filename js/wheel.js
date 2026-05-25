@@ -562,9 +562,27 @@ class QuestionsWheel {
         this.renderMembersConfig();
 
         let showPendingBtn = document.getElementById('wheelMembersShowPendingBtn');
-        if (showPendingBtn) showPendingBtn.onclick = () => this.showQuestionsWithPending();
+        if (showPendingBtn) showPendingBtn.onclick = () => {
+            let panel = document.getElementById('wheelMembersManagePanel');
+            if (panel) panel.hidden = true;
+            showConfirmscreen('wheelView',
+                'Show every question an enabled member still hasn\'t answered?<br>This changes which questions appear on the wheel.',
+                () => {
+                    document.getElementById('wheelView').hidden = false;
+                    this.showQuestionsWithPending();
+                });
+        };
         let hideAnsweredBtn = document.getElementById('wheelMembersHideAnsweredBtn');
-        if (hideAnsweredBtn) hideAnsweredBtn.onclick = () => this.hideFullyAnsweredQuestions();
+        if (hideAnsweredBtn) hideAnsweredBtn.onclick = () => {
+            let panel = document.getElementById('wheelMembersManagePanel');
+            if (panel) panel.hidden = true;
+            showConfirmscreen('wheelView',
+                'Hide every question all enabled members have already answered?<br>This changes which questions appear on the wheel.',
+                () => {
+                    document.getElementById('wheelView').hidden = false;
+                    this.hideFullyAnsweredQuestions();
+                });
+        };
 
         let rollBtn = document.getElementById('wheelMembersRollBtn');
         if (rollBtn) rollBtn.onclick = () => this.rollMember();
