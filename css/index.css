@@ -1296,7 +1296,8 @@ p.answer.dismissed {
 }
 
 .wheel-sound-btn,
-.wheel-config-btn {
+.wheel-config-btn,
+.wheel-members-btn {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
@@ -1312,10 +1313,13 @@ p.answer.dismissed {
 
 .wheel-sound-btn { right: 0.6rem; }
 .wheel-config-btn { right: 2.6rem; }
+.wheel-members-btn { right: 4.6rem; }
+.wheel-members-btn[hidden] { display: none; }
 
 .wheel-sound-btn:hover,
 .wheel-sound-btn.muted,
-.wheel-config-btn:hover {
+.wheel-config-btn:hover,
+.wheel-members-btn:hover {
     color: white;
 }
 
@@ -1864,7 +1868,19 @@ p.answer.dismissed {
 
 .wheel-members-panel-empty[hidden] { display: none; }
 
-/* Members management inside the config panel */
+/* Members roster panel (toggled by the people icon next to the gear) */
+.wheel-members-manage-panel {
+    min-width: 240px;
+}
+
+.wheel-members-manage-header {
+    color: #8d8d8d;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    padding: 0.6rem 0.9rem 0.2rem;
+}
+
 .wheel-members-config {
     padding: 0.3rem 0.9rem 0.6rem;
 }

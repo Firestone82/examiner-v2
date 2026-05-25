@@ -149,9 +149,28 @@ function toggleWheelConfig(event) {
     let panel = document.getElementById('wheelConfigPanel');
     if (!panel) return;
     let willOpen = panel.hidden;
-    // Close sound panels too so they don't stack
+    // Close sound and members panels too so they don't stack
     document.querySelectorAll('.sound-panel').forEach(p => p.hidden = true);
+    let members = document.getElementById('wheelMembersManagePanel');
+    if (members) members.hidden = true;
     panel.hidden = !willOpen;
+}
+
+function toggleWheelMembersPanel(event) {
+    if (event) event.stopPropagation();
+    let panel = document.getElementById('wheelMembersManagePanel');
+    if (!panel) return;
+    let willOpen = panel.hidden;
+    // Close sound and config panels so only one is open at a time.
+    document.querySelectorAll('.sound-panel').forEach(p => p.hidden = true);
+    let cfg = document.getElementById('wheelConfigPanel');
+    if (cfg) cfg.hidden = true;
+    panel.hidden = !willOpen;
+    if (willOpen && wheelInstance) {
+        wheelInstance.renderMembersConfig();
+        let input = document.getElementById('wheelMemberInput');
+        if (input) input.focus();
+    }
 }
 
 function easeOutQuint(t) {
@@ -195,6 +214,8 @@ class QuestionsWheel {
         this.members = loadWheelMembers(this.stateName);
         this.answered = {};
         this.rolledMemberId = null;
+        this.rolling = false;
+        this._rollTimer = null;
 
         let hadSavedState = !!loadWheelState(this.stateName);
         this.restoreState();
@@ -501,14 +522,14 @@ class QuestionsWheel {
         let membersRow = document.getElementById('wheelMembersRow');
         let updateMembersSwitch = () => membersSwitch && membersSwitch.classList.toggle('on', this.prefs.membersEnabled);
         updateMembersSwitch();
-        this.applyMembersConfigVisibility();
+        this.applyMembersFeatureVisibility();
         if (membersRow) {
             membersRow.onclick = (e) => {
                 e.preventDefault();
                 this.prefs.membersEnabled = !this.prefs.membersEnabled;
                 updateMembersSwitch();
                 saveWheelPrefs(this.prefs);
-                this.applyMembersConfigVisibility();
+                this.applyMembersFeatureVisibility();
                 this.renderSidebar();
                 // Reflect the change in an open modal right away.
                 if (!document.getElementById('wheelModal').hidden) {
@@ -575,6 +596,17 @@ class QuestionsWheel {
             if (configBtn && configBtn.contains(e.target)) return;
             if (configPanel.contains(e.target)) return;
             configPanel.hidden = true;
+        });
+
+        // Same close-on-outside-click behaviour for the members roster panel.
+        let membersPanel = document.getElementById('wheelMembersManagePanel');
+        let membersPanelBtn = document.getElementById('wheelMembersButton');
+        if (membersPanel) membersPanel.addEventListener('click', (e) => e.stopPropagation());
+        document.addEventListener('click', (e) => {
+            if (!membersPanel || membersPanel.hidden) return;
+            if (membersPanelBtn && membersPanelBtn.contains(e.target)) return;
+            if (membersPanel.contains(e.target)) return;
+            membersPanel.hidden = true;
         });
 
         // ── Sidebar controls ─────────────────────────────────────────────────
@@ -680,9 +712,15 @@ class QuestionsWheel {
 
     // ── Members ───────────────────────────────────────────────────────────────
 
-    applyMembersConfigVisibility() {
-        let cfg = document.getElementById('wheelMembersConfig');
-        if (cfg) cfg.hidden = !this.prefs.membersEnabled;
+    // The roster-editing button (next to the gear) only exists while the
+    // members feature is on; turning it off also closes its panel.
+    applyMembersFeatureVisibility() {
+        let btn = document.getElementById('wheelMembersButton');
+        if (btn) btn.hidden = !this.prefs.membersEnabled;
+        if (!this.prefs.membersEnabled) {
+            let panel = document.getElementById('wheelMembersManagePanel');
+            if (panel) panel.hidden = true;
+        }
     }
 
     addMember(name) {
@@ -769,7 +807,7 @@ class QuestionsWheel {
     }
 
     toggleAnswered(memberId) {
-        if (!this.selected) return;
+        if (!this.selected || this.rolling) return;
         let qid = this.selected.id;
         let list = this.answered[qid] ? this.answered[qid].slice() : [];
         let pos = list.indexOf(memberId);
@@ -797,7 +835,7 @@ class QuestionsWheel {
     }
 
     rollMember() {
-        if (!this.selected) return;
+        if (!this.selected || this.rolling) return;
         let resultEl = document.getElementById('wheelMembersRollResult');
         let pool = this.unansweredMembers(this.selected.id);
         if (pool.length === 0) {
@@ -812,14 +850,47 @@ class QuestionsWheel {
             playSound('deselect');
             return;
         }
+
         let picked = pool[Math.floor(Math.random() * pool.length)];
-        this.rolledMemberId = picked.id;
-        if (resultEl) {
-            resultEl.hidden = false;
-            resultEl.textContent = '🎲 ' + picked.name;
+        let showAt = (m) => {
+            this.rolledMemberId = m.id;
+            if (resultEl) { resultEl.hidden = false; resultEl.textContent = '🎲 ' + m.name; }
+            this.renderMembersPanel();
+        };
+
+        // One candidate — nothing to cycle through, land immediately.
+        if (pool.length === 1) {
+            showAt(picked);
+            playSound('wheel-land');
+            return;
         }
-        playSound('show');
-        this.renderMembersPanel();
+
+        // Slot-machine cycle: hop between candidates, easing out the delay
+        // between hops until landing on the pre-picked member.
+        this.rolling = true;
+        let duration = 1500;
+        let start = performance.now();
+        let idx = Math.floor(Math.random() * pool.length);
+        let tick = () => {
+            let t = Math.min(1, (performance.now() - start) / duration);
+            if (t >= 1) {
+                this._rollTimer = null;
+                this.rolling = false;
+                showAt(picked);
+                playSound('wheel-land');
+                return;
+            }
+            idx = (idx + 1) % pool.length;
+            showAt(pool[idx]);
+            playSound('wheel-tick', 0.5);
+            this._rollTimer = setTimeout(tick, 55 + 280 * easeOutQuint(t));
+        };
+        tick();
+    }
+
+    cancelRoll() {
+        if (this._rollTimer) { clearTimeout(this._rollTimer); this._rollTimer = null; }
+        this.rolling = false;
     }
 
     applyMembersButton() {
@@ -860,7 +931,7 @@ class QuestionsWheel {
         if (empty) empty.hidden = true;
 
         let pending = qid != null ? this.unansweredMembers(qid).length : this.members.length;
-        if (rollBtn) rollBtn.disabled = pending === 0;
+        if (rollBtn) rollBtn.disabled = pending === 0 || this.rolling;
 
         this.members.forEach(m => {
             let answered = qid != null && this.isAnswered(qid, m.id);
@@ -1483,6 +1554,7 @@ class QuestionsWheel {
     showQuestionModal(question) {
         this.selected = question;
         this.hintRevealed = false;
+        this.cancelRoll();
         this.rolledMemberId = null;
 
         let modal = document.getElementById('wheelModal');
@@ -1613,6 +1685,7 @@ class QuestionsWheel {
 
     closeModal() {
         document.getElementById('wheelModal').hidden = true;
+        this.cancelRoll();
         this.closeMembersPanel();
         this.selected = null;
         this.hintRevealed = false;

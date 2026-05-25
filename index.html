@@ -14,7 +14,7 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/uikit/3.5.9/css/uikit.min.css" />
-    <link rel="stylesheet" href="css/index.css?v=15">
+    <link rel="stylesheet" href="css/index.css?v=16">
     <script type="module" src="https://cdn.jsdelivr.net/gh/zerodevx/zero-md@2/dist/zero-md.min.js"></script>
 </head>
 
@@ -209,21 +209,27 @@
                             <span class="wheel-config-label">Timer</span>
                             <span class="sound-switch" id="wheelTimerSwitch"></span>
                         </label>
-                        <label class="wheel-config-row wheel-config-toggle-row" id="wheelMembersRow" data-tooltip="Track members answering each question (saved per DLC)">
+                        <label class="wheel-config-row wheel-config-toggle-row" id="wheelMembersRow" data-tooltip="Track members answering each question — edit the roster with the people icon">
                             <span class="wheel-config-label">Members</span>
                             <span class="sound-switch" id="wheelMembersSwitch"></span>
                         </label>
-                        <div class="wheel-members-config" id="wheelMembersConfig" hidden>
+                        <div class="wheel-config-divider"></div>
+                        <div class="wheel-config-actions">
+                            <button type="button" class="wheel-config-action" id="wheelExportRatingsBtn" title="Download your star ratings for this DLC as a text table (per question and group)">Export ratings</button>
+                            <button type="button" class="wheel-config-action wheel-config-action-danger" id="wheelEraseRatingsBtn" title="Delete all star ratings for this DLC">Erase all ratings</button>
+                        </div>
+                    </div>
+                    <button class="wheel-members-btn" id="wheelMembersButton" onclick="toggleWheelMembersPanel(event)" title="Edit members" hidden>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </button>
+                    <div id="wheelMembersManagePanel" class="wheel-config-panel wheel-members-manage-panel" hidden>
+                        <div class="wheel-members-manage-header">Members</div>
+                        <div class="wheel-members-config" id="wheelMembersConfig">
                             <div class="wheel-members-add">
                                 <input type="text" id="wheelMemberInput" class="wheel-member-input" placeholder="Add member…" maxlength="40">
                                 <button type="button" id="wheelMemberAddBtn" class="wheel-member-add-btn">Add</button>
                             </div>
                             <div class="wheel-members-config-list" id="wheelMembersConfigList"></div>
-                        </div>
-                        <div class="wheel-config-divider"></div>
-                        <div class="wheel-config-actions">
-                            <button type="button" class="wheel-config-action" id="wheelExportRatingsBtn" title="Download your star ratings for this DLC as a text table (per question and group)">Export ratings</button>
-                            <button type="button" class="wheel-config-action wheel-config-action-danger" id="wheelEraseRatingsBtn" title="Delete all star ratings for this DLC">Erase all ratings</button>
                         </div>
                     </div>
                     <button class="sound-toggle-btn wheel-sound-btn" id="wheelSoundButton" data-panel="wheelSoundPanel" onclick="toggleSound(event)" title="Sounds"></button>
@@ -299,10 +305,10 @@
         </div>
     </div>
 
-    <script src="js/utils.js?v=9"></script>
+    <script src="js/utils.js?v=10"></script>
     <script src="js/examiner.js?v=7"></script>
     <script src="js/interpret.js?v=8"></script>
-    <script src="js/wheel.js?v=21"></script>
+    <script src="js/wheel.js?v=22"></script>
     <script src="js/index.js?v=10"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/uikit/3.5.9/js/uikit.min.js"
