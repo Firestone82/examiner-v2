@@ -14,7 +14,7 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/uikit/3.5.9/css/uikit.min.css" />
-    <link rel="stylesheet" href="css/index.css?v=28">
+    <link rel="stylesheet" href="css/index.css?v=29">
     <script type="module" src="https://cdn.jsdelivr.net/gh/zerodevx/zero-md@2/dist/zero-md.min.js"></script>
 </head>
 
@@ -309,14 +309,20 @@
                 </div>
             </div>
             <div id="wheelMembersPanel" hidden>
-                <div class="wheel-members-panel-header">
-                    <span>Members</span>
-                    <button type="button" id="wheelMembersRollBtn" class="wheel-members-roll-btn" title="Pick a random member who hasn't answered yet">Roll</button>
+                <div id="wheelModalTimerSection" class="wheel-modal-timer-section" hidden>
+                    <span id="wheelModalTimerDisplay" class="wheel-modal-timer-display">00 : 00</span>
+                    <button type="button" id="wheelModalTimerPauseBtn" class="wheel-modal-timer-pause-btn" title="Pause timer">⏸</button>
                 </div>
-                <div id="wheelMembersRollResult" class="wheel-members-roll-result" hidden></div>
-                <div id="wheelMembersPanelList" class="wheel-members-panel-list"></div>
-                <div id="wheelMembersPanelEmpty" class="wheel-members-panel-empty" hidden>
-                    No members yet. Add some with the members button next to the gear icon.
+                <div id="wheelMembersContent" hidden>
+                    <div class="wheel-members-panel-header">
+                        <span>Members</span>
+                        <button type="button" id="wheelMembersRollBtn" class="wheel-members-roll-btn" title="Pick a random member who hasn't answered yet">Roll</button>
+                    </div>
+                    <div id="wheelMembersRollResult" class="wheel-members-roll-result" hidden></div>
+                    <div id="wheelMembersPanelList" class="wheel-members-panel-list"></div>
+                    <div id="wheelMembersPanelEmpty" class="wheel-members-panel-empty" hidden>
+                        No members yet. Add some with the members button next to the gear icon.
+                    </div>
                 </div>
             </div>
         </div>
@@ -353,8 +359,8 @@
     <script src="js/utils.js?v=14"></script>
     <script src="js/examiner.js?v=7"></script>
     <script src="js/interpret.js?v=8"></script>
-    <script src="js/wheel.js?v=35"></script>
-    <script src="js/index.js?v=12"></script>
+    <script src="js/wheel.js?v=36"></script>
+    <script src="js/index.js?v=13"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/uikit/3.5.9/js/uikit.min.js"
         integrity="sha512-OZ9Sq7ecGckkqgxa8t/415BRNoz2GIInOsu8Qjj99r9IlBCq2XJlm9T9z//D4W1lrl+xCdXzq0EYfMo8DZJ+KA=="

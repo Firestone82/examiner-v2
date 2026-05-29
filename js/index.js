@@ -188,6 +188,7 @@ function setMemberQuestionScore(qid, memberId, score) {
     if (Object.keys(all[currentDlcName][qid]).length === 0) delete all[currentDlcName][qid];
     if (Object.keys(all[currentDlcName]).length === 0) delete all[currentDlcName];
     saveAllMemberScores(all);
+    appendMemberScoreHistory(qid, memberId, score);
 }
 
 // Drops every rating a member left, across all questions of the current DLC.
@@ -206,6 +207,13 @@ function removeMemberScores(memberId) {
     });
     if (Object.keys(dlc).length === 0) delete all[currentDlcName];
     if (changed) saveAllMemberScores(all);
+
+    let allHistory = getAllMemberScoreHistory();
+    if (allHistory[currentDlcName] && allHistory[currentDlcName][memberId]) {
+        delete allHistory[currentDlcName][memberId];
+        if (Object.keys(allHistory[currentDlcName]).length === 0) delete allHistory[currentDlcName];
+        saveAllMemberScoreHistory(allHistory);
+    }
 }
 
 function clearAllMemberScoresForDlc() {
@@ -214,6 +222,60 @@ function clearAllMemberScoresForDlc() {
         delete all[currentDlcName];
         saveAllMemberScores(all);
     }
+    let allHistory = getAllMemberScoreHistory();
+    if (currentDlcName && allHistory[currentDlcName]) {
+        delete allHistory[currentDlcName];
+        saveAllMemberScoreHistory(allHistory);
+    }
+}
+
+// ── Member score history (longitudinal rating tracking) ──────────────────────
+
+const MEMBER_SCORE_HISTORY_KEY = 'examiner_wheel_member_score_history';
+// { [dlcName]: { [memberId]: { [qid]: [{score, ts}] } } }
+
+function getAllMemberScoreHistory() {
+    try {
+        return JSON.parse(localStorage.getItem(MEMBER_SCORE_HISTORY_KEY)) || {};
+    } catch { return {}; }
+}
+
+function saveAllMemberScoreHistory(all) {
+    try {
+        localStorage.setItem(MEMBER_SCORE_HISTORY_KEY, JSON.stringify(all));
+    } catch (e) {
+        console.warn('Could not save member score history:', e);
+    }
+}
+
+function appendMemberScoreHistory(qid, memberId, score) {
+    let all = getAllMemberScoreHistory();
+    if (!all[currentDlcName]) all[currentDlcName] = {};
+    if (!all[currentDlcName][memberId]) all[currentDlcName][memberId] = {};
+    if (!all[currentDlcName][memberId][qid]) all[currentDlcName][memberId][qid] = [];
+    let history = all[currentDlcName][memberId][qid];
+    let last = history.length > 0 ? history[history.length - 1] : null;
+    if (last && last.score === score) return;
+    history.push({ score, ts: Date.now() });
+    saveAllMemberScoreHistory(all);
+}
+
+function getMemberScoreHistoryForQuestion(memberId, qid) {
+    let all = getAllMemberScoreHistory();
+    let dlc = all[currentDlcName];
+    return (dlc && dlc[memberId] && dlc[memberId][qid]) || [];
+}
+
+function getMemberAllRatings(memberId) {
+    let all = getAllMemberScores();
+    let dlc = all[currentDlcName];
+    if (!dlc) return [];
+    let result = [];
+    for (let qid of Object.keys(dlc)) {
+        let score = dlc[qid][memberId];
+        if (score > 0) result.push({ qid, score });
+    }
+    return result;
 }
 
 function getMemberScoreCount(qid) {
@@ -810,10 +872,11 @@ const DATA_KEY_PREFIX = 'examiner_';
 // Per-DLC keyed localStorage objects ({ [dlcName]: value }). A single-DLC
 // export pulls one entry from each of these; an import merges entries back.
 const DLC_KEYED_STORES = {
-    scores:       SCORES_KEY,
-    memberScores: MEMBER_SCORES_KEY,
-    wheelState:   WHEEL_STATE_KEY,
-    wheelMembers: WHEEL_MEMBERS_KEY,
+    scores:             SCORES_KEY,
+    memberScores:       MEMBER_SCORES_KEY,
+    memberScoreHistory: MEMBER_SCORE_HISTORY_KEY,
+    wheelState:         WHEEL_STATE_KEY,
+    wheelMembers:       WHEEL_MEMBERS_KEY,
 };
 
 function readStore(key) {

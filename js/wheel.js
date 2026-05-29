@@ -213,6 +213,8 @@ class QuestionsWheel {
         this.collapsedGroups = new Set();
         this.timerInterval = null;
         this.timerStart = 0;
+        this.timerElapsed = 0;
+        this.timerPaused = false;
 
         // Member roster (persists per DLC) and per-question answered tracking
         // (part of the resettable wheel state). rolledMemberId is transient —
@@ -353,6 +355,9 @@ class QuestionsWheel {
             e.preventDefault();
             this.spin();
         });
+
+        let timerPauseBtn = document.getElementById('wheelModalTimerPauseBtn');
+        if (timerPauseBtn) timerPauseBtn.onclick = () => this.toggleTimerPause();
 
         let memberDetailClose = document.getElementById('wheelMemberDetailClose');
         if (memberDetailClose) memberDetailClose.onclick = () => { playSound('next'); this.closeMemberDetail(); };
@@ -1032,6 +1037,45 @@ class QuestionsWheel {
             + (answered.length === 1 ? '' : 's') + ' answered';
         body.appendChild(summary);
 
+        if (isScoringEnabled()) {
+            let allRatings = getMemberAllRatings(memberId);
+            if (allRatings.length > 0) {
+                let avg = allRatings.reduce((a, b) => a + b.score, 0) / allRatings.length;
+                let avgRounded = Math.round(avg * 10) / 10;
+
+                let statsEl = document.createElement('div');
+                statsEl.className = 'wheel-member-detail-rating-stats';
+
+                let statLine = document.createElement('div');
+                statLine.className = 'wheel-member-detail-stat-line';
+                statLine.textContent = allRatings.length + ' question'
+                    + (allRatings.length === 1 ? '' : 's') + ' rated · avg ★' + avgRounded;
+                statsEl.appendChild(statLine);
+
+                let dist = [0, 0, 0, 0, 0];
+                allRatings.forEach(r => {
+                    let bucket = Math.min(4, Math.max(0, Math.ceil(r.score) - 1));
+                    dist[bucket]++;
+                });
+                let distEl = document.createElement('div');
+                distEl.className = 'wheel-member-detail-dist';
+                dist.forEach((count, i) => {
+                    let bar = document.createElement('div');
+                    bar.className = 'wheel-member-detail-dist-bar';
+                    let pct = allRatings.length > 0 ? (count / allRatings.length) * 100 : 0;
+                    bar.style.height = Math.max(2, pct * 0.6) + 'px';
+                    bar.title = (i + 1) + '★: ' + count;
+                    distEl.appendChild(bar);
+                    let label = document.createElement('span');
+                    label.className = 'wheel-member-detail-dist-label';
+                    label.textContent = i + 1;
+                    distEl.appendChild(label);
+                });
+                statsEl.appendChild(distEl);
+                body.appendChild(statsEl);
+            }
+        }
+
         groupNames.forEach(name => {
             let qs = buckets[name].slice().sort((a, b) => titleOf(a).localeCompare(titleOf(b)));
             let grpObj = this.groups.find(g => g.name === name);
@@ -1068,8 +1112,24 @@ class QuestionsWheel {
                     if (rating > 0) {
                         let r = document.createElement('span');
                         r.className = 'wheel-member-detail-rating';
-                        r.textContent = '★' + rating;
-                        r.title = rating + ' / 5';
+                        let history = getMemberScoreHistoryForQuestion(memberId, q.id);
+                        let prevScore = null;
+                        if (history.length >= 2) {
+                            for (let h = history.length - 2; h >= 0; h--) {
+                                if (history[h].score > 0 && history[h].score !== rating) {
+                                    prevScore = history[h].score;
+                                    break;
+                                }
+                            }
+                        }
+                        if (prevScore !== null) {
+                            r.textContent = '★' + prevScore + ' → ★' + rating;
+                            r.className += ' wheel-member-detail-rating-changed';
+                            r.title = 'Changed from ' + prevScore + ' to ' + rating;
+                        } else {
+                            r.textContent = '★' + rating;
+                            r.title = rating + ' / 5';
+                        }
                         row.appendChild(r);
                     }
                 }
@@ -1382,11 +1442,14 @@ class QuestionsWheel {
     }
 
     toggleMembersPanel() {
-        let panel = document.getElementById('wheelMembersPanel');
-        if (!panel) return;
-        if (panel.hidden) {
+        let content = document.getElementById('wheelMembersContent');
+        if (!content) return;
+        if (content.hidden) {
+            content.hidden = false;
             this.renderMembersPanel();
-            panel.hidden = false;
+            // Ensure outer panel is visible
+            let panel = document.getElementById('wheelMembersPanel');
+            if (panel) panel.hidden = false;
             playSound('navigate');
         } else {
             this.closeMembersPanel();
@@ -1394,8 +1457,13 @@ class QuestionsWheel {
     }
 
     closeMembersPanel() {
-        let panel = document.getElementById('wheelMembersPanel');
-        if (panel) panel.hidden = true;
+        let content = document.getElementById('wheelMembersContent');
+        if (content) content.hidden = true;
+        // Only hide the outer panel if the timer is not active
+        if (!this.prefs.timerEnabled) {
+            let panel = document.getElementById('wheelMembersPanel');
+            if (panel) panel.hidden = true;
+        }
     }
 
     renderMembersPanel() {
@@ -1535,28 +1603,67 @@ class QuestionsWheel {
 
     startTimer() {
         if (!this.prefs.timerEnabled) return;
-        if (this.timerInterval) return;
+        if (this.timerInterval || this.timerPaused) return;
         this.timerStart = Date.now();
+        this.timerElapsed = 0;
+        this.timerPaused = false;
+        this._runTimerInterval();
+    }
+
+    _runTimerInterval() {
         let render = () => {
-            let el = document.getElementById('wheelTimer');
-            if (!el) return;
-            let ms = Date.now() - this.timerStart;
-            let s = Math.floor(ms / 1000);
+            let total = this.timerElapsed + (Date.now() - this.timerStart);
+            let s = Math.floor(total / 1000);
             let m = Math.floor(s / 60);
             let h = Math.floor(m / 60);
-            el.innerText = (h > 0 ? String(h).padStart(2, '0') + ' : ' : '')
+            let text = (h > 0 ? String(h).padStart(2, '0') + ' : ' : '')
                 + String(m % 60).padStart(2, '0') + ' : '
                 + String(s % 60).padStart(2, '0');
+            let sidebar = document.getElementById('wheelTimer');
+            if (sidebar) sidebar.innerText = text;
+            let modal = document.getElementById('wheelModalTimerDisplay');
+            if (modal) modal.innerText = text;
         };
         render();
         this.timerInterval = setInterval(render, 500);
     }
 
+    toggleTimerPause() {
+        if (this.timerPaused) {
+            this.timerStart = Date.now();
+            this.timerPaused = false;
+            this._runTimerInterval();
+        } else {
+            if (!this.timerInterval) return;
+            this.timerElapsed += Date.now() - this.timerStart;
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
+            this.timerPaused = true;
+        }
+        this._updateTimerPauseBtn();
+    }
+
+    _updateTimerPauseBtn() {
+        let btn = document.getElementById('wheelModalTimerPauseBtn');
+        if (!btn) return;
+        btn.textContent = this.timerPaused ? '▶' : '⏸';
+        btn.title = this.timerPaused ? 'Resume timer' : 'Pause timer';
+        let display = document.getElementById('wheelModalTimerDisplay');
+        if (display) display.classList.toggle('timer-paused', this.timerPaused);
+    }
+
     stopTimer() {
         if (this.timerInterval) clearInterval(this.timerInterval);
         this.timerInterval = null;
-        let el = document.getElementById('wheelTimer');
-        if (el) el.innerText = '00 : 00';
+        this.timerPaused = false;
+        this.timerElapsed = 0;
+        this.timerStart = 0;
+        let text = '00 : 00';
+        let sidebar = document.getElementById('wheelTimer');
+        if (sidebar) sidebar.innerText = text;
+        let modal = document.getElementById('wheelModalTimerDisplay');
+        if (modal) modal.innerText = text;
+        this._updateTimerPauseBtn();
     }
 
     updateHubSizeLabel() {
@@ -2135,10 +2242,15 @@ class QuestionsWheel {
         let rollResult = document.getElementById('wheelMembersRollResult');
         if (rollResult) { rollResult.hidden = true; rollResult.textContent = ''; }
         this.applyMembersButton();
-        // With the feature on, the roster is shown by default in the question
-        // view; otherwise the panel stays closed.
+
         let membersPanel = document.getElementById('wheelMembersPanel');
-        if (membersPanel) membersPanel.hidden = !this.prefs.membersEnabled;
+        let timerSection = document.getElementById('wheelModalTimerSection');
+        let membersContent = document.getElementById('wheelMembersContent');
+        let showPanel = this.prefs.timerEnabled || this.prefs.membersEnabled;
+        if (membersPanel) membersPanel.hidden = !showPanel;
+        if (timerSection) timerSection.hidden = !this.prefs.timerEnabled;
+        if (membersContent) membersContent.hidden = !this.prefs.membersEnabled;
+        this._updateTimerPauseBtn();
         this.renderMembersPanel();
 
         modal.hidden = false;

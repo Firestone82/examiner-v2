@@ -2079,6 +2079,53 @@ p.answer.dismissed {
     font-weight: bold;
 }
 
+.wheel-member-detail-rating-changed {
+    color: #5bc45b;
+}
+
+.wheel-member-detail-rating-stats {
+    margin: 0 0 0.8rem;
+    padding: 0.55rem 0.7rem;
+    background: #161616;
+    border-radius: 6px;
+    border: 1px solid #2a2a2a;
+}
+
+.wheel-member-detail-stat-line {
+    color: #aaa;
+    font-size: 0.78rem;
+    margin-bottom: 0.45rem;
+}
+
+.wheel-member-detail-dist {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    grid-template-rows: 1fr auto;
+    align-items: end;
+    gap: 3px;
+    height: 44px;
+}
+
+.wheel-member-detail-dist-bar {
+    background: #ffb300;
+    border-radius: 2px 2px 0 0;
+    min-height: 2px;
+    opacity: 0.75;
+    cursor: default;
+    transition: opacity 0.1s;
+    align-self: end;
+}
+
+.wheel-member-detail-dist-bar:hover {
+    opacity: 1;
+}
+
+.wheel-member-detail-dist-label {
+    text-align: center;
+    color: #666;
+    font-size: 0.62rem;
+}
+
 .wheel-member-rolled-tag {
     flex-shrink: 0;
     font-size: 0.85rem;
@@ -2417,6 +2464,53 @@ p.answer.dismissed {
 .wheel-timer {
     font-size: 2.4rem;
     padding: 0.3rem 0;
+}
+
+/* Modal timer section (above members list) */
+.wheel-modal-timer-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #2a2a2a;
+    gap: 0.5rem;
+}
+
+.wheel-modal-timer-display {
+    font-size: 1.6rem;
+    font-weight: bold;
+    color: #f1f1f1;
+    letter-spacing: 0.06em;
+    font-variant-numeric: tabular-nums;
+    flex: 1;
+    text-align: center;
+    transition: color 0.2s;
+}
+
+.wheel-modal-timer-display.timer-paused {
+    color: #888;
+}
+
+.wheel-modal-timer-pause-btn {
+    flex-shrink: 0;
+    background: #242424;
+    border: 1px solid #3a3a3a;
+    border-radius: 6px;
+    color: #bbb;
+    font-size: 1rem;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.wheel-modal-timer-pause-btn:hover {
+    background: #2e2e2e;
+    color: #fff;
+    border-color: #555;
 }
 
 /* Sidebar group header */
