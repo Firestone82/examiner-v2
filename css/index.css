@@ -2720,18 +2720,6 @@ p.answer.dismissed {
     color: #959595;
 }
 
-/* Member average rating badge shown in each member row */
-.wheel-member-avg-rating {
-    flex-shrink: 0;
-    font-size: 0.72rem;
-    font-weight: bold;
-    color: #ffb300;
-    white-space: nowrap;
-    min-width: 2.6rem;
-    text-align: right;
-    cursor: default;
-}
-
 /* Stats button in the Questions section header */
 .wheel-stats-btn {
     background: none;

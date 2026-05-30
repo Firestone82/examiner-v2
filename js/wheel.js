@@ -1679,26 +1679,7 @@ class QuestionsWheel {
                 row.appendChild(buildMemberStarWidget(qid, m.id, () => {
                     this.refreshModalScore();
                     this.renderSidebar();
-                    // Refresh this member's avg badge too.
-                    let avgBadge = row.querySelector('.wheel-member-avg-rating');
-                    if (avgBadge) {
-                        let a = getMemberOverallAverage(m.id, this.questions);
-                        avgBadge.textContent = a > 0 ? '★ ' + a : '';
-                        avgBadge.title = a > 0 ? 'Average rating: ' + a + ' / 5' : 'No ratings yet';
-                    }
                 }));
-            }
-
-            // Show the member's overall average rating across all questions.
-            if (isScoringEnabled()) {
-                let avg = getMemberOverallAverage(m.id, this.questions);
-                let avgBadge = document.createElement('span');
-                avgBadge.className = 'wheel-member-avg-rating';
-                avgBadge.textContent = avg > 0 ? '★ ' + avg : '';
-                avgBadge.title = avg > 0 ? 'Average rating: ' + avg + ' / 5' : 'No ratings yet';
-                avgBadge.onclick = (e) => e.stopPropagation();
-                avgBadge.ondblclick = (e) => e.stopPropagation();
-                row.appendChild(avgBadge);
             }
 
             list.appendChild(row);
