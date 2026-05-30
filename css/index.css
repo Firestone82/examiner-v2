@@ -2720,6 +2720,31 @@ p.answer.dismissed {
     color: #959595;
 }
 
+.wheel-global-inq {
+    display: flex;
+    justify-content: center;
+    align-items: baseline;
+    gap: 0.4rem;
+    margin-top: -0.2rem;
+    padding-bottom: 0.2rem;
+    color: #888;
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.wheel-global-inq[hidden] { display: none; }
+
+.wheel-global-inq-label {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.68rem;
+    color: #6f6f6f;
+}
+
+.wheel-global-inq-value {
+    color: #c0c0c0;
+}
+
 /* Stats button in the Questions section header */
 .wheel-stats-btn {
     background: none;

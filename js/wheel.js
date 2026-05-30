@@ -106,6 +106,9 @@ const WHEEL_DEFAULT_PREFS = {
     dynamicRotation: false,
     centered: true,
     timerEnabled: false,
+    // 'always' (default) ticks the global timer continuously;
+    // 'in-question' only counts while a question is open.
+    timerContinuous: true,
     membersEnabled: false,
 };
 
@@ -125,6 +128,7 @@ function loadWheelPrefs() {
                 dynamicRotation: p.dynamicRotation === true,
                 centered:        p.centered !== false,
                 timerEnabled:    p.timerEnabled === true,
+                timerContinuous: p.timerContinuous !== false,
                 membersEnabled:  p.membersEnabled === true,
             };
         }
@@ -574,13 +578,26 @@ class QuestionsWheel {
 
         let timerSwitch = document.getElementById('wheelTimerSwitch');
         let timerRow = document.getElementById('wheelTimerRow');
+        let timerContSwitch = document.getElementById('wheelTimerContinuousSwitch');
+        let timerContRow = document.getElementById('wheelTimerContinuousRow');
         let updateTimerSwitch = () => timerSwitch && timerSwitch.classList.toggle('on', this.prefs.timerEnabled);
+        let updateTimerContSwitch = () => {
+            timerContSwitch && timerContSwitch.classList.toggle('on', this.prefs.timerContinuous);
+            // The "Count always" sub-option is only meaningful when the
+            // timer feature itself is enabled.
+            if (timerContRow) {
+                timerContRow.style.opacity = this.prefs.timerEnabled ? '' : '0.38';
+                timerContRow.style.pointerEvents = this.prefs.timerEnabled ? '' : 'none';
+            }
+        };
         updateTimerSwitch();
+        updateTimerContSwitch();
         if (timerRow) {
             timerRow.onclick = (e) => {
                 e.preventDefault();
                 this.prefs.timerEnabled = !this.prefs.timerEnabled;
                 updateTimerSwitch();
+                updateTimerContSwitch();
                 saveWheelPrefs(this.prefs);
                 this.applyTimerVisibility();
                 // If a question is open, the timer should start counting
@@ -592,6 +609,16 @@ class QuestionsWheel {
                     if (side) side.hidden = false;
                     this.startTimer();
                 }
+            };
+        }
+        if (timerContRow) {
+            timerContRow.onclick = (e) => {
+                e.preventDefault();
+                if (!this.prefs.timerEnabled) return;
+                this.prefs.timerContinuous = !this.prefs.timerContinuous;
+                updateTimerContSwitch();
+                saveWheelPrefs(this.prefs);
+                this.applyTimerVisibility();
             };
         }
 
@@ -1747,9 +1774,22 @@ class QuestionsWheel {
         if (box) box.hidden = !on;
         let globalBox = document.getElementById('wheelGlobalTimerBox');
         if (globalBox) globalBox.hidden = !on;
+        // The small in-question secondary readout only makes sense in
+        // continuous mode (otherwise it would just mirror the main timer).
+        let inq = document.getElementById('wheelGlobalInQuestion');
+        if (inq) inq.hidden = !(on && this.prefs.timerContinuous);
         this.applyModalSideVisibility();
-        // Render once so the labels are correct even without a tick.
+        // In continuous mode the global timer keeps ticking; in in-question
+        // mode it only ticks while a question is open.
+        this.initTimers();
+        if (on && this.prefs.timerContinuous && !this.global.paused) {
+            this.swStart(this.global);
+            this.ensureTimerLoop();
+        } else if (on && !this.prefs.timerContinuous && !this.selected) {
+            this.swStop(this.global);
+        }
         this.renderTimers();
+        this.stopTimerLoopIfIdle();
     }
 
     applyModalSideVisibility() {
@@ -1770,6 +1810,7 @@ class QuestionsWheel {
     initTimers() {
         this.global = this.global || { elapsed: 0, runSince: null, paused: false };
         this.question = this.question || { elapsed: 0, runSince: null, paused: false };
+        this.inQuestion = this.inQuestion || { elapsed: 0, runSince: null, paused: false };
     }
 
     stopwatchValue(s) {
@@ -1799,6 +1840,8 @@ class QuestionsWheel {
         if (gEl) gEl.innerText = this.formatTime(this.stopwatchValue(this.global));
         let qEl = document.getElementById('wheelModalTimer');
         if (qEl) qEl.innerText = this.formatTime(this.stopwatchValue(this.question));
+        let inqEl = document.getElementById('wheelGlobalInQuestionValue');
+        if (inqEl) inqEl.innerText = this.formatTime(this.stopwatchValue(this.inQuestion));
 
         let gBtn = document.getElementById('wheelGlobalPauseBtn');
         if (gBtn) gBtn.innerText = this.global.paused ? '▶' : '⏸';
@@ -1819,22 +1862,25 @@ class QuestionsWheel {
     }
 
     stopTimerLoopIfIdle() {
-        // Keep the loop while either stopwatch is actively running.
-        if (this.global.runSince != null || this.question.runSince != null) return;
+        // Keep the loop while any stopwatch is actively running.
+        if (this.global.runSince != null
+            || this.question.runSince != null
+            || this.inQuestion.runSince != null) return;
         if (this.timerInterval) clearInterval(this.timerInterval);
         this.timerInterval = null;
     }
 
     // Called when a question modal opens. Resets the question timer; starts
-    // both stopwatches (subject to their own pause state).
+    // the per-question and in-question stopwatches. In 'in-question' mode
+    // the global also starts now (in continuous mode it's already running).
     startTimer() {
         this.initTimers();
         if (!this.prefs.timerEnabled) return;
-        // Reset question stopwatch for the new question.
         this.question.elapsed = 0;
         this.question.runSince = null;
         this.question.paused = false;
         this.swStart(this.question);
+        this.swStart(this.inQuestion);
         this.swStart(this.global);
         this.ensureTimerLoop();
         this.renderTimers();
@@ -1844,7 +1890,10 @@ class QuestionsWheel {
     stopTimer() {
         this.initTimers();
         this.swStop(this.question);
-        this.swStop(this.global);
+        this.swStop(this.inQuestion);
+        // The continuous global timer keeps ticking once no question is open;
+        // the in-question one stops with the modal.
+        if (!this.prefs.timerContinuous) this.swStop(this.global);
         this.renderTimers();
         this.stopTimerLoopIfIdle();
     }
