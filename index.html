@@ -271,10 +271,8 @@
 
             <div class="uk-width-1-4@l uk-width-1-5@xl">
                 <div class="sidebar">
-                    <span class="section-title darker wheel-time-section" id="wheelTimeSection" hidden>Time</span>
-                    <span class="timer wheel-timer" id="wheelTimer" hidden>00 : 00</span>
-
                     <span class="section-title darker">Questions
+                        <button class="wheel-stats-btn" id="wheelStatsBtn" title="Show rating statistics" hidden>📊</button>
                         <button class="wheel-showall-btn" id="wheelShowAllBtn" title="Hide all questions">⦸</button>
                         <button class="wheel-search-btn" id="wheelSearchBtn" title="Search questions"><span uk-icon="search"></span></button>
                         <button class="wheel-shuffle-header-btn" id="wheelShuffleBtn" title="Randomize wheel section order">⇄</button>
@@ -308,15 +306,21 @@
                     <button id="wheelModalHide" class="uk-button uk-button-danger" type="button">Hide question</button>
                 </div>
             </div>
-            <div id="wheelMembersPanel" hidden>
-                <div class="wheel-members-panel-header">
-                    <span>Members</span>
-                    <button type="button" id="wheelMembersRollBtn" class="wheel-members-roll-btn" title="Pick a random member who hasn't answered yet">Roll</button>
+            <div id="wheelModalSide" hidden>
+                <div id="wheelModalTimerBox" class="wheel-modal-timer-box" hidden>
+                    <span class="wheel-modal-timer-label">Time</span>
+                    <span class="timer wheel-modal-timer" id="wheelModalTimer">00 : 00</span>
                 </div>
-                <div id="wheelMembersRollResult" class="wheel-members-roll-result" hidden></div>
-                <div id="wheelMembersPanelList" class="wheel-members-panel-list"></div>
-                <div id="wheelMembersPanelEmpty" class="wheel-members-panel-empty" hidden>
-                    No members yet. Add some with the members button next to the gear icon.
+                <div id="wheelMembersPanel" hidden>
+                    <div class="wheel-members-panel-header">
+                        <span>Members</span>
+                        <button type="button" id="wheelMembersRollBtn" class="wheel-members-roll-btn" title="Pick a random member who hasn't answered yet">Roll</button>
+                    </div>
+                    <div id="wheelMembersRollResult" class="wheel-members-roll-result" hidden></div>
+                    <div id="wheelMembersPanelList" class="wheel-members-panel-list"></div>
+                    <div id="wheelMembersPanelEmpty" class="wheel-members-panel-empty" hidden>
+                        No members yet. Add some with the members button next to the gear icon.
+                    </div>
                 </div>
             </div>
         </div>
@@ -330,6 +334,18 @@
                 <button type="button" id="wheelMemberDetailClose" class="wheel-member-detail-close" title="Close">&times;</button>
             </div>
             <div id="wheelMemberDetailBody" class="wheel-member-detail-body"></div>
+        </div>
+    </div>
+
+    <!-- Rating statistics table -->
+    <div id="wheelStatsModal" hidden>
+        <div id="wheelStatsContent">
+            <div class="wheel-stats-header">
+                <span class="wheel-stats-title">Rating statistics</span>
+                <select id="wheelStatsSelect" class="wheel-stats-select" title="Show the global average or a single member"></select>
+                <button type="button" id="wheelStatsClose" class="wheel-member-detail-close" title="Close">&times;</button>
+            </div>
+            <div id="wheelStatsBody" class="wheel-stats-body"></div>
         </div>
     </div>
 

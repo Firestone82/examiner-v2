@@ -337,11 +337,13 @@ class QuestionsWheel {
         };
 
         // Spacebar triggers spin when the modal is not open
-        let anyOverlayOpen = () => ['wheelMemberDetailModal', 'wheelChoiceModal']
+        let anyOverlayOpen = () => ['wheelMemberDetailModal', 'wheelChoiceModal', 'wheelStatsModal']
             .some(id => { let el = document.getElementById(id); return el && !el.hidden; });
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
+                let stats = document.getElementById('wheelStatsModal');
+                if (stats && !stats.hidden) { this.closeStatsModal(); return; }
                 let detail = document.getElementById('wheelMemberDetailModal');
                 if (detail && !detail.hidden) { this.closeMemberDetail(); return; }
                 let choice = document.getElementById('wheelChoiceModal');
@@ -360,6 +362,16 @@ class QuestionsWheel {
         if (memberDetailModal) memberDetailModal.onclick = (e) => {
             if (e.target === memberDetailModal) this.closeMemberDetail();
         };
+
+        let statsClose = document.getElementById('wheelStatsClose');
+        if (statsClose) statsClose.onclick = () => { playSound('next'); this.closeStatsModal(); };
+        let statsModal = document.getElementById('wheelStatsModal');
+        if (statsModal) statsModal.onclick = (e) => {
+            if (e.target === statsModal) this.closeStatsModal();
+        };
+
+        let statsBtn = document.getElementById('wheelStatsBtn');
+        if (statsBtn) statsBtn.onclick = () => this.openStatsModal();
 
         let choiceCancel = document.getElementById('wheelChoiceCancel');
         if (choiceCancel) choiceCancel.onclick = () => { playSound('next'); this.closeChoice(); };
@@ -482,7 +494,11 @@ class QuestionsWheel {
 
         let scoringSwitch = document.getElementById('wheelScoringSwitch');
         let scoringRow = document.getElementById('wheelScoringRow');
-        let updateScoringSwitch = () => scoringSwitch && scoringSwitch.classList.toggle('on', isScoringEnabled());
+        let updateScoringSwitch = () => {
+            scoringSwitch && scoringSwitch.classList.toggle('on', isScoringEnabled());
+            let sb = document.getElementById('wheelStatsBtn');
+            if (sb) sb.hidden = !isScoringEnabled();
+        };
         updateScoringSwitch();
         if (scoringRow) {
             scoringRow.onclick = (e) => {
@@ -561,8 +577,13 @@ class QuestionsWheel {
                 this.applyTimerVisibility();
                 // If a question is open, the timer should start counting
                 // right away when newly enabled, and stop when disabled.
-                if (!this.prefs.timerEnabled) this.stopTimer();
-                else if (this.selected) this.startTimer();
+                if (!this.prefs.timerEnabled) {
+                    this.stopTimer();
+                } else if (this.selected) {
+                    let side = document.getElementById('wheelModalSide');
+                    if (side) side.hidden = false;
+                    this.startTimer();
+                }
             };
         }
 
@@ -1087,6 +1108,157 @@ class QuestionsWheel {
         if (modal) modal.hidden = true;
     }
 
+    // ── Stats modal ───────────────────────────────────────────────────────────
+
+    openStatsModal() {
+        let modal = document.getElementById('wheelStatsModal');
+        let sel = document.getElementById('wheelStatsSelect');
+        if (!modal || !sel) return;
+
+        // Build dropdown: "Global" + one entry per member.
+        sel.innerHTML = '';
+        let globalOpt = document.createElement('option');
+        globalOpt.value = '';
+        globalOpt.textContent = 'Global average';
+        sel.appendChild(globalOpt);
+        this.members.forEach(m => {
+            let opt = document.createElement('option');
+            opt.value = m.id;
+            opt.textContent = m.name;
+            sel.appendChild(opt);
+        });
+        sel.value = '';
+        sel.onchange = () => this.renderStatsTable(sel.value);
+
+        this.renderStatsTable('');
+        modal.hidden = false;
+        playSound('navigate');
+    }
+
+    renderStatsTable(memberId) {
+        let body = document.getElementById('wheelStatsBody');
+        if (!body) return;
+        body.innerHTML = '';
+
+        let questions = this.questions;
+        if (questions.length === 0) {
+            let empty = document.createElement('div');
+            empty.className = 'wheel-stats-empty';
+            empty.textContent = 'No questions loaded.';
+            body.appendChild(empty);
+            return;
+        }
+
+        let titleOf = q => (q.question && q.question.title) || ('Question #' + q.id);
+        let groupNameOf = q => {
+            let g = this.findGroup(this.questionGroups[q.id]);
+            return g ? g.name : 'Ungrouped';
+        };
+
+        let groupOrder = {};
+        this.groups.forEach((g, i) => { groupOrder[g.name] = i; });
+        let orderIndex = name => (name in groupOrder ? groupOrder[name] : this.groups.length);
+
+        let scoreOf = (q) => {
+            if (memberId) {
+                return getMemberQuestionScore(q.id, memberId);
+            }
+            let manual = getQuestionScore(q.id);
+            return manual > 0 ? manual : getMemberAverageScore(q.id);
+        };
+
+        // Only rows with a score > 0.
+        let rated = questions.filter(q => scoreOf(q) > 0);
+
+        if (rated.length === 0) {
+            let empty = document.createElement('div');
+            empty.className = 'wheel-stats-empty';
+            empty.textContent = memberId
+                ? 'This member hasn\'t rated any questions yet.'
+                : 'No ratings yet.';
+            body.appendChild(empty);
+            return;
+        }
+
+        rated.sort((a, b) => {
+            let ga = groupNameOf(a), gb = groupNameOf(b);
+            let oa = orderIndex(ga), ob = orderIndex(gb);
+            if (oa !== ob) return oa - ob;
+            if (ga !== gb) return ga.localeCompare(gb);
+            return scoreOf(b) - scoreOf(a);
+        });
+
+        // Group rows by category.
+        let buckets = {};
+        rated.forEach(q => {
+            let name = groupNameOf(q);
+            (buckets[name] = buckets[name] || []).push(q);
+        });
+        let groupNames = Object.keys(buckets).sort((a, b) => orderIndex(a) - orderIndex(b));
+
+        // Overall average line.
+        let allVals = rated.map(scoreOf);
+        let overallAvg = Math.round((allVals.reduce((a, b) => a + b, 0) / allVals.length) * 2) / 2;
+        let summary = document.createElement('div');
+        summary.className = 'wheel-stats-summary';
+        summary.textContent = rated.length + ' rated question' + (rated.length === 1 ? '' : 's')
+            + ' · overall avg ★' + overallAvg;
+        body.appendChild(summary);
+
+        groupNames.forEach(name => {
+            let qs = buckets[name];
+            let grpObj = this.groups.find(g => g.name === name);
+
+            let section = document.createElement('div');
+            section.className = 'wheel-stats-group';
+
+            let head = document.createElement('div');
+            head.className = 'wheel-stats-group-head';
+            if (grpObj && grpObj.color) {
+                let dot = document.createElement('span');
+                dot.className = 'wheel-member-detail-dot';
+                dot.style.background = grpObj.color;
+                head.appendChild(dot);
+            }
+            let gname = document.createElement('span');
+            gname.className = 'wheel-stats-group-name';
+            gname.textContent = name;
+            head.appendChild(gname);
+
+            let gvals = qs.map(scoreOf);
+            let gavg = Math.round((gvals.reduce((a, b) => a + b, 0) / gvals.length) * 2) / 2;
+            let gcnt = document.createElement('span');
+            gcnt.className = 'wheel-stats-group-avg';
+            gcnt.textContent = '★' + gavg;
+            head.appendChild(gcnt);
+            section.appendChild(head);
+
+            qs.forEach(q => {
+                let row = document.createElement('div');
+                row.className = 'wheel-stats-row';
+
+                let qtitle = document.createElement('span');
+                qtitle.className = 'wheel-stats-q';
+                qtitle.textContent = titleOf(q);
+
+                let stars = document.createElement('span');
+                stars.className = 'wheel-stats-stars';
+                stars.textContent = '★' + scoreOf(q);
+
+                row.appendChild(qtitle);
+                row.appendChild(stars);
+                section.appendChild(row);
+            });
+
+            body.appendChild(section);
+        });
+    }
+
+    closeStatsModal() {
+        let modal = document.getElementById('wheelStatsModal');
+        if (modal) modal.hidden = true;
+    }
+
     // Small choice dialog. options is [{ label, desc, fn }]; picking one closes
     // the dialog and runs its fn. Used by the Show/Hide question filters.
     showChoice(title, options) {
@@ -1387,6 +1559,8 @@ class QuestionsWheel {
         if (panel.hidden) {
             this.renderMembersPanel();
             panel.hidden = false;
+            let side = document.getElementById('wheelModalSide');
+            if (side) side.hidden = false;
             playSound('navigate');
         } else {
             this.closeMembersPanel();
@@ -1396,6 +1570,7 @@ class QuestionsWheel {
     closeMembersPanel() {
         let panel = document.getElementById('wheelMembersPanel');
         if (panel) panel.hidden = true;
+        this.applyModalSideVisibility();
     }
 
     renderMembersPanel() {
@@ -1463,7 +1638,26 @@ class QuestionsWheel {
                 row.appendChild(buildMemberStarWidget(qid, m.id, () => {
                     this.refreshModalScore();
                     this.renderSidebar();
+                    // Refresh this member's avg badge too.
+                    let avgBadge = row.querySelector('.wheel-member-avg-rating');
+                    if (avgBadge) {
+                        let a = getMemberOverallAverage(m.id, this.questions);
+                        avgBadge.textContent = a > 0 ? '★ ' + a : '';
+                        avgBadge.title = a > 0 ? 'Average rating: ' + a + ' / 5' : 'No ratings yet';
+                    }
                 }));
+            }
+
+            // Show the member's overall average rating across all questions.
+            if (isScoringEnabled()) {
+                let avg = getMemberOverallAverage(m.id, this.questions);
+                let avgBadge = document.createElement('span');
+                avgBadge.className = 'wheel-member-avg-rating';
+                avgBadge.textContent = avg > 0 ? '★ ' + avg : '';
+                avgBadge.title = avg > 0 ? 'Average rating: ' + avg + ' / 5' : 'No ratings yet';
+                avgBadge.onclick = (e) => e.stopPropagation();
+                avgBadge.ondblclick = (e) => e.stopPropagation();
+                row.appendChild(avgBadge);
             }
 
             list.appendChild(row);
@@ -1526,11 +1720,20 @@ class QuestionsWheel {
     }
 
     applyTimerVisibility() {
-        let sec = document.getElementById('wheelTimeSection');
-        let timer = document.getElementById('wheelTimer');
-        let on = this.prefs.timerEnabled;
-        if (sec) sec.hidden = !on;
-        if (timer) timer.hidden = !on;
+        // Timer now lives in the modal side panel, not the sidebar.
+        // Show/hide the timer box inside the modal based on the pref.
+        let box = document.getElementById('wheelModalTimerBox');
+        if (box) box.hidden = !this.prefs.timerEnabled;
+        this.applyModalSideVisibility();
+    }
+
+    applyModalSideVisibility() {
+        let side = document.getElementById('wheelModalSide');
+        if (!side) return;
+        let timerOn = this.prefs.timerEnabled;
+        let panel = document.getElementById('wheelMembersPanel');
+        let membersOpen = panel ? !panel.hidden : false;
+        side.hidden = !(timerOn || membersOpen);
     }
 
     startTimer() {
@@ -1538,7 +1741,7 @@ class QuestionsWheel {
         if (this.timerInterval) return;
         this.timerStart = Date.now();
         let render = () => {
-            let el = document.getElementById('wheelTimer');
+            let el = document.getElementById('wheelModalTimer');
             if (!el) return;
             let ms = Date.now() - this.timerStart;
             let s = Math.floor(ms / 1000);
@@ -1555,7 +1758,7 @@ class QuestionsWheel {
     stopTimer() {
         if (this.timerInterval) clearInterval(this.timerInterval);
         this.timerInterval = null;
-        let el = document.getElementById('wheelTimer');
+        let el = document.getElementById('wheelModalTimer');
         if (el) el.innerText = '00 : 00';
     }
 
@@ -2140,6 +2343,12 @@ class QuestionsWheel {
         let membersPanel = document.getElementById('wheelMembersPanel');
         if (membersPanel) membersPanel.hidden = !this.prefs.membersEnabled;
         this.renderMembersPanel();
+
+        // Show side panel if timer or members are active.
+        let side = document.getElementById('wheelModalSide');
+        if (side) side.hidden = !(this.prefs.timerEnabled || this.prefs.membersEnabled);
+        let timerBox = document.getElementById('wheelModalTimerBox');
+        if (timerBox) timerBox.hidden = !this.prefs.timerEnabled;
 
         modal.hidden = false;
         this.startTimer();
