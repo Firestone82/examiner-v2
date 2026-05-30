@@ -2056,6 +2056,35 @@ p.answer.dismissed {
     font-size: 0.75rem;
 }
 
+.wheel-member-detail-group-avg {
+    flex-shrink: 0;
+    color: #ffb300;
+    font-size: 0.78rem;
+    font-weight: bold;
+    margin-right: 0.15rem;
+}
+
+.wheel-member-detail-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 0.5rem;
+    padding: 0.55rem 0.4rem 0.3rem;
+    border-top: 1px solid #2a2a2a;
+}
+
+.wheel-member-detail-footer-label {
+    color: #aaa;
+    font-size: 0.85rem;
+    font-weight: bold;
+}
+
+.wheel-member-detail-footer-avg {
+    color: #ffb300;
+    font-size: 1rem;
+    font-weight: bold;
+}
+
 .wheel-member-detail-row {
     display: flex;
     align-items: center;
@@ -2611,7 +2640,7 @@ p.answer.dismissed {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 0.7rem 1rem 0.9rem;
+    padding: 0.7rem 1rem 0.8rem;
     flex-shrink: 0;
 }
 
@@ -2630,6 +2659,65 @@ p.answer.dismissed {
     font-variant-numeric: tabular-nums;
     letter-spacing: 0.05em;
     color: #fff;
+}
+
+.wheel-modal-timer-controls {
+    display: flex;
+    gap: 0.6rem;
+    margin-top: 0.4rem;
+}
+
+.wheel-modal-timer-btn {
+    background: none;
+    border: 1px solid #3a3a3a;
+    color: #bbb;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    line-height: 1;
+    padding: 0.15rem 0.55rem;
+    transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+
+.wheel-modal-timer-btn:hover {
+    color: #fff;
+    border-color: #555;
+    background: #242424;
+}
+
+/* Global timer box at top of the sidebar */
+.wheel-global-timer-box {
+    position: relative;
+    margin-bottom: 0.4rem;
+}
+
+.wheel-global-timer-box[hidden] { display: none; }
+
+.wheel-global-timer-title {
+    position: relative;
+    padding-right: 2.4rem;
+}
+
+.wheel-global-pause-btn {
+    /* Reuse .pause-toggle-btn positioning but scoped here for clarity. */
+    position: absolute;
+    right: 0.3rem;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.wheel-global-timer {
+    display: block;
+    text-align: center;
+    color: white;
+    font-size: 2.4rem;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.05em;
+    padding: 0.3rem 0;
+}
+
+.wheel-global-timer.paused {
+    color: #959595;
 }
 
 /* Member average rating badge shown in each member row */

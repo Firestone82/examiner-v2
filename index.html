@@ -271,6 +271,12 @@
 
             <div class="uk-width-1-4@l uk-width-1-5@xl">
                 <div class="sidebar">
+                    <div class="wheel-global-timer-box" id="wheelGlobalTimerBox" hidden>
+                        <span class="section-title darker wheel-global-timer-title">Total time
+                            <button class="pause-toggle-btn wheel-global-pause-btn" id="wheelGlobalPauseBtn" type="button" title="Pause/Continue total timer">⏸</button>
+                        </span>
+                        <span class="timer wheel-global-timer" id="wheelGlobalTimer">00 : 00</span>
+                    </div>
                     <span class="section-title darker">Questions
                         <button class="wheel-stats-btn" id="wheelStatsBtn" title="Show rating statistics" hidden>📊</button>
                         <button class="wheel-showall-btn" id="wheelShowAllBtn" title="Hide all questions">⦸</button>
@@ -308,8 +314,12 @@
             </div>
             <div id="wheelModalSide" hidden>
                 <div id="wheelModalTimerBox" class="wheel-modal-timer-box" hidden>
-                    <span class="wheel-modal-timer-label">Time</span>
+                    <span class="wheel-modal-timer-label">Question time</span>
                     <span class="timer wheel-modal-timer" id="wheelModalTimer">00 : 00</span>
+                    <div class="wheel-modal-timer-controls">
+                        <button type="button" id="wheelModalTimerPauseBtn" class="wheel-modal-timer-btn" title="Pause/Continue">⏸</button>
+                        <button type="button" id="wheelModalTimerResetBtn" class="wheel-modal-timer-btn" title="Reset to 00 : 00">↺</button>
+                    </div>
                 </div>
                 <div id="wheelMembersPanel" hidden>
                     <div class="wheel-members-panel-header">

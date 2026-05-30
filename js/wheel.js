@@ -314,6 +314,7 @@ class QuestionsWheel {
     }
 
     attach() {
+        this.initTimers();
         this.applySize();
         this.applyTextScale();
         this.applyHubSize();
@@ -322,6 +323,13 @@ class QuestionsWheel {
 
         let hub = document.getElementById('wheelHub');
         if (hub) hub.onclick = () => this.spin();
+
+        let globalPauseBtn = document.getElementById('wheelGlobalPauseBtn');
+        if (globalPauseBtn) globalPauseBtn.onclick = () => this.toggleGlobalPause();
+        let qPauseBtn = document.getElementById('wheelModalTimerPauseBtn');
+        if (qPauseBtn) qPauseBtn.onclick = () => this.toggleQuestionPause();
+        let qResetBtn = document.getElementById('wheelModalTimerResetBtn');
+        if (qResetBtn) qResetBtn.onclick = () => this.resetQuestionTimer();
 
         document.getElementById('wheelModalClose').onclick = () => {
             playSound('next');
@@ -1053,6 +1061,8 @@ class QuestionsWheel {
             + (answered.length === 1 ? '' : 's') + ' answered';
         body.appendChild(summary);
 
+        let avgOf = vals => Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 2) / 2;
+
         groupNames.forEach(name => {
             let qs = buckets[name].slice().sort((a, b) => titleOf(a).localeCompare(titleOf(b)));
             let grpObj = this.groups.find(g => g.name === name);
@@ -1074,6 +1084,16 @@ class QuestionsWheel {
             gcount.textContent = '(' + qs.length + ')';
             head.appendChild(dot);
             head.appendChild(gname);
+            if (isScoringEnabled()) {
+                let gvals = qs.map(q => getMemberQuestionScore(q.id, memberId)).filter(v => v > 0);
+                if (gvals.length > 0) {
+                    let gavg = document.createElement('span');
+                    gavg.className = 'wheel-member-detail-group-avg';
+                    gavg.textContent = '★' + avgOf(gvals);
+                    gavg.title = 'Average rating for ' + name;
+                    head.appendChild(gavg);
+                }
+            }
             head.appendChild(gcount);
             section.appendChild(head);
 
@@ -1098,6 +1118,27 @@ class QuestionsWheel {
             });
             body.appendChild(section);
         });
+
+        if (isScoringEnabled()) {
+            let allVals = answered
+                .map(q => getMemberQuestionScore(q.id, memberId))
+                .filter(v => v > 0);
+            if (allVals.length > 0) {
+                let footer = document.createElement('div');
+                footer.className = 'wheel-member-detail-footer';
+                let label = document.createElement('span');
+                label.className = 'wheel-member-detail-footer-label';
+                label.textContent = 'Overall average';
+                let val = document.createElement('span');
+                val.className = 'wheel-member-detail-footer-avg';
+                val.textContent = '★' + avgOf(allVals);
+                val.title = 'Average across ' + allVals.length + ' rated question'
+                    + (allVals.length === 1 ? '' : 's');
+                footer.appendChild(label);
+                footer.appendChild(val);
+                body.appendChild(footer);
+            }
+        }
 
         modal.hidden = false;
         playSound('navigate');
@@ -1720,11 +1761,14 @@ class QuestionsWheel {
     }
 
     applyTimerVisibility() {
-        // Timer now lives in the modal side panel, not the sidebar.
-        // Show/hide the timer box inside the modal based on the pref.
+        let on = this.prefs.timerEnabled;
         let box = document.getElementById('wheelModalTimerBox');
-        if (box) box.hidden = !this.prefs.timerEnabled;
+        if (box) box.hidden = !on;
+        let globalBox = document.getElementById('wheelGlobalTimerBox');
+        if (globalBox) globalBox.hidden = !on;
         this.applyModalSideVisibility();
+        // Render once so the labels are correct even without a tick.
+        this.renderTimers();
     }
 
     applyModalSideVisibility() {
@@ -1736,30 +1780,115 @@ class QuestionsWheel {
         side.hidden = !(timerOn || membersOpen);
     }
 
-    startTimer() {
-        if (!this.prefs.timerEnabled) return;
-        if (this.timerInterval) return;
-        this.timerStart = Date.now();
-        let render = () => {
-            let el = document.getElementById('wheelModalTimer');
-            if (!el) return;
-            let ms = Date.now() - this.timerStart;
-            let s = Math.floor(ms / 1000);
-            let m = Math.floor(s / 60);
-            let h = Math.floor(m / 60);
-            el.innerText = (h > 0 ? String(h).padStart(2, '0') + ' : ' : '')
-                + String(m % 60).padStart(2, '0') + ' : '
-                + String(s % 60).padStart(2, '0');
-        };
-        render();
-        this.timerInterval = setInterval(render, 500);
+    // ── Timers ────────────────────────────────────────────────────────────────
+    // Two independent stopwatches: a global one (total time spent in questions)
+    // and a per-question one (resets on each question open). Each ticks while
+    // its `runSince` is non-null and stops while paused or while no question
+    // is open. The global timer also stops when its own pause is engaged.
+
+    initTimers() {
+        this.global = this.global || { elapsed: 0, runSince: null, paused: false };
+        this.question = this.question || { elapsed: 0, runSince: null, paused: false };
     }
 
-    stopTimer() {
+    stopwatchValue(s) {
+        return s.elapsed + (s.runSince != null ? Date.now() - s.runSince : 0);
+    }
+
+    formatTime(ms) {
+        let s = Math.floor(ms / 1000);
+        let m = Math.floor(s / 60);
+        let h = Math.floor(m / 60);
+        return (h > 0 ? String(h).padStart(2, '0') + ' : ' : '')
+            + String(m % 60).padStart(2, '0') + ' : '
+            + String(s % 60).padStart(2, '0');
+    }
+
+    swStart(s) { if (s.runSince == null && !s.paused) s.runSince = Date.now(); }
+    swStop(s) { if (s.runSince != null) { s.elapsed += Date.now() - s.runSince; s.runSince = null; } }
+    swTogglePause(s) {
+        if (s.paused) { s.paused = false; this.swStart(s); }
+        else { this.swStop(s); s.paused = true; }
+    }
+    swReset(s) { s.elapsed = 0; if (s.runSince != null) s.runSince = Date.now(); }
+
+    renderTimers() {
+        this.initTimers();
+        let gEl = document.getElementById('wheelGlobalTimer');
+        if (gEl) gEl.innerText = this.formatTime(this.stopwatchValue(this.global));
+        let qEl = document.getElementById('wheelModalTimer');
+        if (qEl) qEl.innerText = this.formatTime(this.stopwatchValue(this.question));
+
+        let gBtn = document.getElementById('wheelGlobalPauseBtn');
+        if (gBtn) gBtn.innerText = this.global.paused ? '▶' : '⏸';
+        let gTimer = document.getElementById('wheelGlobalTimer');
+        if (gTimer) gTimer.classList.toggle('paused', this.global.paused);
+
+        let qBtn = document.getElementById('wheelModalTimerPauseBtn');
+        if (qBtn) qBtn.innerText = this.question.paused ? '▶' : '⏸';
+        let qTimer = document.getElementById('wheelModalTimer');
+        if (qTimer) qTimer.classList.toggle('paused', this.question.paused);
+    }
+
+    ensureTimerLoop() {
+        if (this.timerInterval) return;
+        let tick = () => this.renderTimers();
+        tick();
+        this.timerInterval = setInterval(tick, 500);
+    }
+
+    stopTimerLoopIfIdle() {
+        // Keep the loop while either stopwatch is actively running.
+        if (this.global.runSince != null || this.question.runSince != null) return;
         if (this.timerInterval) clearInterval(this.timerInterval);
         this.timerInterval = null;
-        let el = document.getElementById('wheelModalTimer');
-        if (el) el.innerText = '00 : 00';
+    }
+
+    // Called when a question modal opens. Resets the question timer; starts
+    // both stopwatches (subject to their own pause state).
+    startTimer() {
+        this.initTimers();
+        if (!this.prefs.timerEnabled) return;
+        // Reset question stopwatch for the new question.
+        this.question.elapsed = 0;
+        this.question.runSince = null;
+        this.question.paused = false;
+        this.swStart(this.question);
+        this.swStart(this.global);
+        this.ensureTimerLoop();
+        this.renderTimers();
+    }
+
+    // Called when the question modal closes.
+    stopTimer() {
+        this.initTimers();
+        this.swStop(this.question);
+        this.swStop(this.global);
+        this.renderTimers();
+        this.stopTimerLoopIfIdle();
+    }
+
+    toggleGlobalPause() {
+        this.initTimers();
+        this.swTogglePause(this.global);
+        playSound('pause');
+        this.renderTimers();
+        this.stopTimerLoopIfIdle();
+    }
+
+    toggleQuestionPause() {
+        this.initTimers();
+        this.swTogglePause(this.question);
+        playSound('pause');
+        this.renderTimers();
+        this.stopTimerLoopIfIdle();
+    }
+
+    resetQuestionTimer() {
+        this.initTimers();
+        this.swReset(this.question);
+        playSound('navigate');
+        this.renderTimers();
     }
 
     updateHubSizeLabel() {
